@@ -13,7 +13,7 @@
 - **React 18+** - Frontend framework
 - **face-api.js** - Facial landmark detection and expression recognition
 - **Vercel** - Deployment platform
-- **Tailwind CSS** - Styling
+- **Plain CSS** - Styling
 - **Webcam API** - Browser camera access
 
 ### Matching Algorithm
@@ -44,10 +44,7 @@
 - [ ] Install dependencies:
   ```bash
   npm install face-api.js
-  npm install -D tailwindcss postcss autoprefixer
-  npx tailwindcss init -p
   ```
-- [ ] Configure Tailwind CSS
 - [ ] Set up project structure
 - [ ] Test local development server
 - [ ] Initialize Git repository
@@ -72,6 +69,8 @@ nailongify/
 │   ├── utils/
 │   │   ├── faceDetection.js
 │   │   └── landmarkMatching.js
+│   ├── styles/
+│   │   └── App.css
 │   ├── App.jsx
 │   └── main.jsx
 │
@@ -370,9 +369,7 @@ function findBestMatch(userLandmarks, memeLandmarks) {
   },
   "devDependencies": {
     "vite": "^5.0.0",
-    "tailwindcss": "^3.4.0",
-    "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0"
+    "@vitejs/plugin-react": "^4.3.0"
   }
 }
 ```

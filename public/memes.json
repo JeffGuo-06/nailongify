@@ -1,0 +1,60 @@
+{
+  "memes": [
+    {
+      "id": "angry",
+      "path": "/nailong/angry.jpg",
+      "name": "Angry Nailong",
+      "expression": "angry",
+      "comments": "mouth moderately open"
+    },
+    {
+      "id": "cry",
+      "path": "/nailong/cry.jpg",
+      "name": "Crying Nailong",
+      "expression": "sad",
+      "comments": "mouth incredibly open"
+    },
+    {
+      "id": "geeked",
+      "path": "/nailong/geeked.jpg",
+      "name": "Geeked Nailong",
+      "expression": "happy",
+      "comments": "mouth moderately open, eyebrows very raised"
+    },
+    {
+      "id": "off-the-deep-end",
+      "path": "/nailong/off-the-deep-end.jpg",
+      "name": "Off The Deep End Nailong",
+      "expression": "crazy",
+      "comments": "mouth incredibly open, eyes wide open, eyebrows very raised"
+    },
+    {
+      "id": "smiling",
+      "path": "/nailong/smiling.jpg",
+      "name": "Smiling Nailong",
+      "expression": "smiling",
+      "comments": "mouth closed, smile"
+    },
+    {
+      "id": "smirk",
+      "path": "/nailong/smirk.jpg",
+      "name": "Smirking Nailong",
+      "expression": "smug",
+      "comments": "mouth closed"
+    },
+    {
+      "id": "winking",
+      "path": "/nailong/winking.jpg",
+      "name": "Winking Nailong",
+      "expression": "winking",
+      "comments": "one eye closed, mouth closed"
+    },
+    {
+      "id": "woah-woah-woah",
+      "path": "/nailong/woah-woah-woah.jpg",
+      "name": "Woah Woah Woah Nailong",
+      "expression": "concerned",
+      "comments": "mouth moderately open, face tilted downwards"
+    }
+  ]
+}
