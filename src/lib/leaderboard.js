@@ -45,13 +45,54 @@ export async function uploadCaptureImage(dataUrl, nickname) {
 }
 
 /**
+ * Upload replay video to Supabase Storage
+ * @param {Blob} videoBlob - Video blob to upload
+ * @param {string} nickname - Player's nickname (used in filename)
+ * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+ */
+export async function uploadReplayVideo(videoBlob, nickname) {
+  try {
+    // Generate unique filename
+    const timestamp = Date.now();
+    const sanitizedNickname = nickname.replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `${sanitizedNickname}_${timestamp}.webm`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('videos')
+      .upload(filename, videoBlob, {
+        contentType: 'video/webm',
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('[STORAGE] Error uploading video:', error);
+      return { success: false, error: error.message };
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('videos')
+      .getPublicUrl(filename);
+
+    console.log('[STORAGE] Video uploaded successfully:', publicUrlData.publicUrl);
+    return { success: true, url: publicUrlData.publicUrl };
+  } catch (err) {
+    console.error('[STORAGE] Unexpected error:', err);
+    return { success: false, error: 'Failed to upload video' };
+  }
+}
+
+/**
  * Submit a new leaderboard entry
  * @param {string} nickname - Player's nickname (1-20 characters)
  * @param {number} timeMs - Completion time in milliseconds
  * @param {string} captureImageUrl - Optional URL to the capture grid image
+ * @param {string} videoUrl - Optional URL to the replay video
  * @returns {Promise<{success: boolean, data?: object, error?: string}>}
  */
-export async function submitLeaderboardEntry(nickname, timeMs, captureImageUrl = null) {
+export async function submitLeaderboardEntry(nickname, timeMs, captureImageUrl = null, videoUrl = null) {
   try {
     // Validate inputs
     if (!nickname || nickname.trim().length === 0) {
@@ -71,6 +112,7 @@ export async function submitLeaderboardEntry(nickname, timeMs, captureImageUrl =
           nickname: nickname.trim(),
           time_ms: timeMs,
           capture_image_url: captureImageUrl,
+          video_url: videoUrl,
         },
       ])
       .select()

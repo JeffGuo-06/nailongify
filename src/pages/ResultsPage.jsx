@@ -6,7 +6,7 @@ function ResultsPage() {
   const location = useLocation();
 
   // Get data passed from the game
-  const { captures, completionTime } = location.state || {};
+  const { captures, completionTime, replayVideoBlob } = location.state || {};
 
   // If no data is available, redirect to home
   if (!captures || !completionTime) {
@@ -26,6 +26,7 @@ function ResultsPage() {
     <EndScreen
       captures={captures}
       completionTime={completionTime}
+      replayVideoBlob={replayVideoBlob}
       onRestart={handleRestart}
       onViewLeaderboard={handleViewLeaderboard}
     />

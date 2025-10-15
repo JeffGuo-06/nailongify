@@ -3,7 +3,7 @@ import { detectFace } from '../utils/faceDetection';
 import { findBestExpressionMatch } from '../utils/expressionMatching';
 import Timer from './Timer';
 
-function WebcamCapture({ memes, facialData, onMatchFound, onCapture, onUnlockFace, onHoldProgress, autoStart, trackProgress, unlockedFaces, showTimer, startTime, isRunning, onTimeUpdate }) {
+function WebcamCapture({ memes, facialData, onMatchFound, onCapture, onUnlockFace, onHoldProgress, autoStart, trackProgress, unlockedFaces, showTimer, startTime, isRunning, onTimeUpdate, onVideoReady }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -55,6 +55,10 @@ function WebcamCapture({ memes, facialData, onMatchFound, onCapture, onUnlockFac
           videoRef.current.play();
           setCameraActive(true);
           startDetection();
+          // Notify parent that video is ready
+          if (onVideoReady) {
+            onVideoReady(videoRef.current);
+          }
         };
       }
     } catch (err) {
