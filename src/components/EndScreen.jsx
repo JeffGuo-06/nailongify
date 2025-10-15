@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { submitLeaderboardEntry, getPlayerRank } from '../lib/leaderboard';
+import { submitLeaderboardEntry, getPlayerRank, uploadCaptureImage } from '../lib/leaderboard';
 
 function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
   const [compositeGraphics, setCompositeGraphics] = useState([]);
@@ -35,12 +35,12 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    // Canvas dimensions - make it wider and more spacious
-    const width = 1400;
-    const height = 800;
-    const padding = 60;
-    const imageSize = 450;
-    const gap = 80;
+    // Canvas dimensions - scaled to 0.48x (0.6 × 0.8)
+    const width = 672;
+    const height = 384;
+    const padding = 29;
+    const imageSize = 216;
+    const gap = 38;
 
     canvas.width = width;
     canvas.height = height;
@@ -52,11 +52,11 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Title "Nailongify" with better styling
+    // Title "Nailongify" with better styling (scaled to 0.48x)
     ctx.fillStyle = '#ff6b9d';
-    ctx.font = 'bold 72px sans-serif';
+    ctx.font = 'bold 34px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Nailongify', width / 2, 100);
+    ctx.fillText('Nailongify', width / 2, 48);
 
     try {
       // Load user capture
@@ -95,7 +95,7 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
         memeImg.src = memePath;
       });
 
-      const imageY = 160;
+      const imageY = 77;
       const leftImageX = (width / 2) - (imageSize + gap / 2);
       const rightImageX = (width / 2) + (gap / 2);
 
@@ -114,60 +114,60 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
         ctx.closePath();
       };
 
-      // Draw shadow for left image
+      // Draw shadow for left image (scaled to 0.48x)
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-      ctx.shadowBlur = 30;
-      ctx.shadowOffsetY = 10;
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 5;
       ctx.fillStyle = '#ffffff';
-      drawRoundedRect(leftImageX - 15, imageY - 15, imageSize + 30, imageSize + 30, 20);
+      drawRoundedRect(leftImageX - 7, imageY - 7, imageSize + 14, imageSize + 14, 10);
       ctx.fill();
       ctx.restore();
 
       // Draw user capture on left (flip horizontal, rounded)
       ctx.save();
-      drawRoundedRect(leftImageX, imageY, imageSize, imageSize, 15);
+      drawRoundedRect(leftImageX, imageY, imageSize, imageSize, 7);
       ctx.clip();
       ctx.translate(leftImageX + imageSize, imageY);
       ctx.scale(-1, 1);
       ctx.drawImage(userImg, 0, 0, imageSize, imageSize);
       ctx.restore();
 
-      // Draw shadow for right image
+      // Draw shadow for right image (scaled to 0.48x)
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-      ctx.shadowBlur = 30;
-      ctx.shadowOffsetY = 10;
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 5;
       ctx.fillStyle = '#ffffff';
-      drawRoundedRect(rightImageX - 15, imageY - 15, imageSize + 30, imageSize + 30, 20);
+      drawRoundedRect(rightImageX - 7, imageY - 7, imageSize + 14, imageSize + 14, 10);
       ctx.fill();
       ctx.restore();
 
       // Draw meme image on right (rounded)
       ctx.save();
-      drawRoundedRect(rightImageX, imageY, imageSize, imageSize, 15);
+      drawRoundedRect(rightImageX, imageY, imageSize, imageSize, 7);
       ctx.clip();
       ctx.drawImage(memeImg, rightImageX, imageY, imageSize, imageSize);
       ctx.restore();
 
-      // Draw labels with better styling
-      const labelY = imageY + imageSize + 50;
+      // Draw labels with better styling (scaled to 0.48x)
+      const labelY = imageY + imageSize + 24;
 
       // User label
       ctx.fillStyle = '#6c757d';
-      ctx.font = '600 28px sans-serif';
+      ctx.font = '600 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('Your Face', leftImageX + imageSize / 2, labelY);
 
       // Meme label with name
       ctx.fillStyle = '#6c757d';
-      ctx.font = '600 28px sans-serif';
+      ctx.font = '600 14px sans-serif';
       ctx.fillText(capture.expressionName.toUpperCase(), rightImageX + imageSize / 2, labelY);
 
-      // Similarity score with background badge
-      const badgeY = height - 100;
-      const badgeWidth = 350;
-      const badgeHeight = 80;
+      // Similarity score with background badge (scaled to 0.48x)
+      const badgeY = height - 48;
+      const badgeWidth = 168;
+      const badgeHeight = 38;
       const badgeX = width / 2 - badgeWidth / 2;
 
       // Draw badge background with gradient
@@ -177,17 +177,17 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
       badgeGradient.addColorStop(1, '#ff4581');
       ctx.fillStyle = badgeGradient;
       ctx.shadowColor = 'rgba(255, 107, 157, 0.4)';
-      ctx.shadowBlur = 20;
-      ctx.shadowOffsetY = 5;
-      drawRoundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 15);
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 2;
+      drawRoundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 7);
       ctx.fill();
       ctx.restore();
 
       // Draw similarity text
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 52px sans-serif';
+      ctx.font = 'bold 25px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`${Math.round(capture.similarity)}% Match`, width / 2, badgeY + 57);
+      ctx.fillText(`${Math.round(capture.similarity)}% Match`, width / 2, badgeY + 27);
 
       return {
         dataUrl: canvas.toDataURL('image/png'),
@@ -195,6 +195,155 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
       };
     } catch (error) {
       console.error('Error creating composite for', capture.expressionId, error);
+      return null;
+    }
+  };
+
+  const generateAllCapturesComposite = async (captures) => {
+    console.log('[ALL CAPTURES DEBUG] Generating grid composite for', captures.length, 'captures');
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Canvas dimensions for 4x4 grid layout (4 rows, 4 columns) - scaled to 0.48x (0.6 × 0.8)
+    // Each row has 2 pairs: [User][Nailong] [User][Nailong]
+    const imageSize = 134;
+    const gap = 7;
+    const pairGap = 19; // Larger gap between pairs
+    const padding = 29;
+    const rows = 4;
+    const cols = 4;
+
+    const width = (imageSize * cols) + (gap * 2) + (pairGap) + (padding * 2);
+    const height = (imageSize * rows) + (gap * (rows - 1)) + (padding * 2) + 48; // Extra space for title
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background - white with gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(1, '#f8f9fa');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Title "Nailongify" with better styling (scaled to 0.48x)
+    ctx.fillStyle = '#ff6b9d';
+    ctx.font = 'bold 27px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Nailongify', width / 2, 34);
+
+    // Helper function for rounded rectangles
+    const drawRoundedRect = (x, y, w, h, radius) => {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + w - radius, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+      ctx.lineTo(x + w, y + h - radius);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+      ctx.lineTo(x + radius, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    };
+
+    try {
+      // Load all images first
+      const loadedImages = [];
+
+      for (const capture of captures) {
+        // Load user image
+        const userImg = new Image();
+        await new Promise((resolve, reject) => {
+          userImg.onload = resolve;
+          userImg.onerror = reject;
+          userImg.src = capture.imageData;
+        });
+
+        // Load meme image
+        const memeImg = new Image();
+        const memePath = capture.memePath.startsWith('/') ? capture.memePath : `/${capture.memePath}`;
+        await new Promise((resolve, reject) => {
+          memeImg.onload = resolve;
+          memeImg.onerror = reject;
+          memeImg.src = memePath;
+        });
+
+        loadedImages.push({
+          userImg,
+          memeImg,
+          expressionName: capture.expressionName,
+          similarity: capture.similarity
+        });
+      }
+
+      // Draw grid: 4 rows x 4 columns (scaled to 0.48x)
+      // Each row has 2 pairs: [User][Nailong] [User][Nailong]
+      loadedImages.forEach((images, index) => {
+        const pairIndex = Math.floor(index / 2); // 0-3 (which pair in the grid)
+        const isFirstPair = index % 2 === 0; // Left pair or right pair
+
+        const row = pairIndex; // 0-3
+        const startY = padding + 48 + (row * (imageSize + gap));
+
+        // Calculate X positions
+        let userX, memeX;
+        if (isFirstPair) {
+          // First pair: left side
+          userX = padding;
+          memeX = padding + imageSize + gap;
+        } else {
+          // Second pair: right side
+          userX = padding + imageSize + gap + imageSize + pairGap;
+          memeX = padding + imageSize + gap + imageSize + pairGap + imageSize + gap;
+        }
+
+        // Draw user face with shadow (scaled to 0.48x)
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+        ctx.shadowBlur = 7;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = '#ffffff';
+        drawRoundedRect(userX - 2, startY - 2, imageSize + 4, imageSize + 4, 5);
+        ctx.fill();
+        ctx.restore();
+
+        // Draw user image (flipped)
+        ctx.save();
+        drawRoundedRect(userX, startY, imageSize, imageSize, 4);
+        ctx.clip();
+        ctx.translate(userX + imageSize, startY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(images.userImg, 0, 0, imageSize, imageSize);
+        ctx.restore();
+
+        // Draw Nailong meme with shadow (scaled to 0.48x)
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+        ctx.shadowBlur = 7;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = '#ffffff';
+        drawRoundedRect(memeX - 2, startY - 2, imageSize + 4, imageSize + 4, 5);
+        ctx.fill();
+        ctx.restore();
+
+        // Draw meme image
+        ctx.save();
+        drawRoundedRect(memeX, startY, imageSize, imageSize, 4);
+        ctx.clip();
+        ctx.drawImage(images.memeImg, memeX, startY, imageSize, imageSize);
+        ctx.restore();
+      });
+
+      console.log('[ALL CAPTURES DEBUG] Grid composite generated successfully');
+
+      return {
+        dataUrl: canvas.toDataURL('image/png'),
+        capture: { expressionId: 'all-captures', expressionName: 'All Expressions' }
+      };
+    } catch (error) {
+      console.error('[ALL CAPTURES DEBUG] Error creating grid composite:', error);
       return null;
     }
   };
@@ -207,6 +356,14 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
       const graphic = await generateCompositeGraphic(capture);
       if (graphic) {
         graphics.push(graphic);
+      }
+    }
+
+    // Generate the "all captures" grid composite if we have all 8 captures
+    if (captures.length === 8) {
+      const allCapturesGraphic = await generateAllCapturesComposite(captures);
+      if (allCapturesGraphic) {
+        graphics.push(allCapturesGraphic);
       }
     }
 
@@ -263,6 +420,12 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
     };
   }, []);
 
+  // Remove emojis from text
+  const removeEmojis = (text) => {
+    // Remove emojis using regex - matches most emoji ranges
+    return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E0}-\u{1F1FF}]/gu, '');
+  };
+
   const handleSubmitToLeaderboard = async () => {
     if (!nickname.trim()) {
       setSubmitError('Please enter a nickname');
@@ -272,21 +435,55 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
     setSubmitting(true);
     setSubmitError(null);
 
-    const result = await submitLeaderboardEntry(nickname.trim(), completionTime);
+    try {
+      // Find the "all captures" grid composite
+      const allCapturesGraphic = compositeGraphics.find(
+        g => g.capture.expressionId === 'all-captures'
+      );
 
-    if (result.success) {
-      setSubmitted(true);
-      // Get player's rank
-      const rankResult = await getPlayerRank(completionTime);
-      if (rankResult.success) {
-        setPlayerRank(rankResult.rank);
+      let captureImageUrl = null;
+
+      // Upload the grid composite if it exists
+      if (allCapturesGraphic) {
+        console.log('[SUBMIT] Uploading capture grid image...');
+        const uploadResult = await uploadCaptureImage(
+          allCapturesGraphic.dataUrl,
+          nickname.trim()
+        );
+
+        if (uploadResult.success) {
+          captureImageUrl = uploadResult.url;
+          console.log('[SUBMIT] Image uploaded successfully:', captureImageUrl);
+        } else {
+          console.warn('[SUBMIT] Failed to upload image:', uploadResult.error);
+          // Continue with submission even if image upload fails
+        }
       }
-      // Navigate to leaderboard after successful submission
-      setTimeout(() => {
-        onViewLeaderboard();
-      }, 1500); // Show success message for 1.5s before navigating
-    } else {
-      setSubmitError(result.error || 'Failed to submit to leaderboard');
+
+      // Submit to leaderboard with the image URL
+      const result = await submitLeaderboardEntry(
+        nickname.trim(),
+        completionTime,
+        captureImageUrl
+      );
+
+      if (result.success) {
+        setSubmitted(true);
+        // Get player's rank
+        const rankResult = await getPlayerRank(completionTime);
+        if (rankResult.success) {
+          setPlayerRank(rankResult.rank);
+        }
+        // Navigate to leaderboard after successful submission
+        setTimeout(() => {
+          onViewLeaderboard();
+        }, 1500); // Show success message for 1.5s before navigating
+      } else {
+        setSubmitError(result.error || 'Failed to submit to leaderboard');
+      }
+    } catch (err) {
+      console.error('[SUBMIT] Unexpected error:', err);
+      setSubmitError('An unexpected error occurred');
     }
 
     setSubmitting(false);
@@ -312,39 +509,9 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
   return (
     <div className="end-screen">
       <div className="end-screen-content">
-        <h1 className="end-title">🏆 Challenge Complete!</h1>
-        <p className="end-time">Your Time: <span className="time-display">{formatTime(completionTime)}</span></p>
-
-        {/* Leaderboard submission form */}
-        {!submitted ? (
-          <div className="leaderboard-submit">
-            <h3>Submit to Global Leaderboard</h3>
-            <div className="submit-form">
-              <input
-                type="text"
-                placeholder="Enter nickname (max 20 chars)"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value.slice(0, 20))}
-                maxLength={20}
-                disabled={submitting}
-                onKeyPress={(e) => e.key === 'Enter' && handleSubmitToLeaderboard()}
-              />
-              <button
-                onClick={handleSubmitToLeaderboard}
-                disabled={submitting || !nickname.trim()}
-                className="btn-submit-leaderboard"
-              >
-                {submitting ? 'Submitting...' : 'Submit Score'}
-              </button>
-            </div>
-            {submitError && <p className="submit-error">{submitError}</p>}
-          </div>
-        ) : (
-          <div className="leaderboard-success">
-            <p className="success-message">✅ Score submitted successfully!</p>
-            {playerRank && <p className="rank-display">Your Rank: <strong>#{playerRank}</strong></p>}
-          </div>
-        )}
+        <div className="end-header">
+          <h1 className="end-title">Challenge Complete!</h1>
+        </div>
 
         {loading ? (
           <div className="loading-graphics">
@@ -354,15 +521,6 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
         ) : compositeGraphics.length > 0 ? (
           <>
             <div className="capture-carousel">
-              <div className="carousel-header">
-                <h2 className="carousel-title">
-                  {compositeGraphics[currentIndex].capture.expressionName}
-                </h2>
-                <p className="carousel-counter">
-                  {currentIndex + 1} / {compositeGraphics.length}
-                </p>
-              </div>
-
               <div className="carousel-content">
                 {compositeGraphics.length > 1 && (
                   <button
@@ -385,7 +543,7 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
                     onClick={() => handleDownload(compositeGraphics[currentIndex])}
                     title="Download this graphic"
                   >
-                    📥 Download
+                    Download
                   </button>
                 </div>
 
@@ -414,16 +572,42 @@ function EndScreen({ captures, completionTime, onRestart, onViewLeaderboard }) {
               )}
             </div>
 
-            <div className="end-actions">
-              {compositeGraphics.length > 1 && (
-                <button className="btn-primary" onClick={handleDownloadAll}>
-                  📥 Download All ({compositeGraphics.length})
+            {/* Leaderboard submission form */}
+            {!submitted ? (
+              <div className="leaderboard-submit">
+                <h3>Submit to Global Leaderboard - Time: <span className="time-display">{formatTime(completionTime)}</span></h3>
+                <div className="submit-form">
+                  <input
+                    type="text"
+                    placeholder="Enter nickname (max 20 chars)"
+                    value={nickname}
+                    onChange={(e) => setNickname(removeEmojis(e.target.value).slice(0, 20))}
+                    maxLength={20}
+                    disabled={submitting}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSubmitToLeaderboard()}
+                  />
+                  <button
+                    onClick={handleSubmitToLeaderboard}
+                    disabled={submitting || !nickname.trim()}
+                    className="btn-submit-leaderboard"
+                  >
+                    {submitting ? 'Submitting...' : 'Submit Score'}
+                  </button>
+                  <button className="btn-secondary" onClick={onRestart}>
+                    Try Again
+                  </button>
+                </div>
+                {submitError && <p className="submit-error">{submitError}</p>}
+              </div>
+            ) : (
+              <div className="leaderboard-success">
+                <p className="success-message">Score submitted successfully!</p>
+                {playerRank && <p className="rank-display">Your Rank: <strong>#{playerRank}</strong></p>}
+                <button className="btn-secondary" onClick={onRestart}>
+                  Try Again
                 </button>
-              )}
-              <button className="btn-secondary" onClick={onRestart}>
-                🔄 Try Again
-              </button>
-            </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="no-captures-message">

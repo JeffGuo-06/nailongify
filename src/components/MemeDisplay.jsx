@@ -1,22 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
-function MemeDisplay({ match }) {
+function MemeDisplay({ match, justUnlockedExpression }) {
   const [displayedMatch, setDisplayedMatch] = useState(null);
-  const [isNew, setIsNew] = useState(false);
+  const [showUnlockPop, setShowUnlockPop] = useState(false);
+  const previousUnlockRef = useRef(null);
 
   useEffect(() => {
     if (match) {
-      setIsNew(true);
       setDisplayedMatch(match);
-
-      // Remove "new" animation after a short delay
-      const timer = setTimeout(() => {
-        setIsNew(false);
-      }, 500);
-
-      return () => clearTimeout(timer);
     }
   }, [match]);
+
+  // Trigger pop animation when a face is unlocked and it matches current display
+  useEffect(() => {
+    if (justUnlockedExpression && justUnlockedExpression !== previousUnlockRef.current) {
+      console.log('[MEME DISPLAY] Unlocked expression:', justUnlockedExpression);
+
+      // Check if the currently displayed match is the one that was just unlocked
+      if (displayedMatch && displayedMatch.expression === justUnlockedExpression) {
+        console.log('[MEME DISPLAY] Triggering pop animation');
+        setShowUnlockPop(true);
+
+        // Clear animation after it completes
+        setTimeout(() => {
+          setShowUnlockPop(false);
+        }, 600);
+      }
+
+      previousUnlockRef.current = justUnlockedExpression;
+    }
+  }, [justUnlockedExpression, displayedMatch]);
 
   if (!displayedMatch) {
     return (
@@ -29,8 +42,8 @@ function MemeDisplay({ match }) {
   }
 
   return (
-    <div className={`meme-display ${isNew ? 'new-match' : ''}`}>
-      <div className="meme-card">
+    <div className="meme-display">
+      <div className={`meme-card ${showUnlockPop ? 'unlock-pop' : ''}`}>
         <div className="meme-image-container">
           <img
             src={displayedMatch.meme.path}

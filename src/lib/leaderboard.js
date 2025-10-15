@@ -1,12 +1,57 @@
 import { supabase } from './supabase';
 
 /**
+ * Upload capture grid image to Supabase Storage
+ * @param {string} dataUrl - Base64 data URL of the image
+ * @param {string} nickname - Player's nickname (used in filename)
+ * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+ */
+export async function uploadCaptureImage(dataUrl, nickname) {
+  try {
+    // Convert data URL to blob
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const sanitizedNickname = nickname.replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `${sanitizedNickname}_${timestamp}.png`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('captures')
+      .upload(filename, blob, {
+        contentType: 'image/png',
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('[STORAGE] Error uploading image:', error);
+      return { success: false, error: error.message };
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('captures')
+      .getPublicUrl(filename);
+
+    console.log('[STORAGE] Image uploaded successfully:', publicUrlData.publicUrl);
+    return { success: true, url: publicUrlData.publicUrl };
+  } catch (err) {
+    console.error('[STORAGE] Unexpected error:', err);
+    return { success: false, error: 'Failed to upload image' };
+  }
+}
+
+/**
  * Submit a new leaderboard entry
  * @param {string} nickname - Player's nickname (1-20 characters)
  * @param {number} timeMs - Completion time in milliseconds
+ * @param {string} captureImageUrl - Optional URL to the capture grid image
  * @returns {Promise<{success: boolean, data?: object, error?: string}>}
  */
-export async function submitLeaderboardEntry(nickname, timeMs) {
+export async function submitLeaderboardEntry(nickname, timeMs, captureImageUrl = null) {
   try {
     // Validate inputs
     if (!nickname || nickname.trim().length === 0) {
@@ -25,6 +70,7 @@ export async function submitLeaderboardEntry(nickname, timeMs) {
         {
           nickname: nickname.trim(),
           time_ms: timeMs,
+          capture_image_url: captureImageUrl,
         },
       ])
       .select()

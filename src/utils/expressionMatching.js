@@ -171,7 +171,7 @@ function findBestPersonalizedMatch(expressions, memes, landmarks, facialData) {
     'off-the-deep-end': 'off-the-deep-end',
     'smiling': 'smiling',
     'smirk': 'smirk',
-    'winking': 'winking',
+    'sad': 'sad',
     'woah-woah-woah': 'woah-woah-woah'
   };
 
@@ -389,15 +389,13 @@ export function findBestExpressionMatch(expressions, memes, landmarks = null, fa
       }
     }
 
-    // winking: one eye closed, mouth closed
-    // (We approximate by checking for low eye ratio + closed mouth)
-    const hasLowEyeRatio = eyeRatio < 0.22;
-    if (hasLowEyeRatio) {
-      const winkingMeme = memes.find(m => m.id === 'winking');
-      if (winkingMeme) {
+    // sad: downturned mouth, closed
+    if (dominantExpression === 'sad') {
+      const sadMeme = memes.find(m => m.id === 'sad');
+      if (sadMeme) {
         return {
-          meme: winkingMeme,
-          expression: 'winking',
+          meme: sadMeme,
+          expression: 'sad',
           confidence: Math.round(maxProbability * 100),
           similarity: Math.round(maxProbability * 100)
         };

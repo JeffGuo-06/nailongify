@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { loadModels, areModelsLoaded } from "./utils/faceDetection";
 import WebcamCapture from "./components/WebcamCapture";
 import MemeDisplay from "./components/MemeDisplay";
@@ -6,14 +7,16 @@ import CaptureScreen from "./components/CaptureScreen";
 import CalibrationMode from "./components/CalibrationMode";
 import UnlockableFaces from "./components/UnlockableFaces";
 import IntroModal from "./components/IntroModal";
-import EndScreen from "./components/EndScreen";
 import Timer from "./components/Timer";
-import Leaderboard from "./components/Leaderboard";
+import Countdown from "./components/Countdown";
+import Header from "./components/Header";
+import TipBox from "./components/TipBox";
 
 // DEV mode - set to true to show debug/dev features
-const DEV = true;
+const DEV = false;
 
 function App() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("Initializing...");
   const [error, setError] = useState(null);
@@ -23,12 +26,11 @@ function App() {
   const [captureMode, setCaptureMode] = useState(false);
   const [captureData, setCaptureData] = useState(null);
   const [calibrationMode, setCalibrationMode] = useState(false);
-  const [leaderboardMode, setLeaderboardMode] = useState(false);
   const [unlockedFaces, setUnlockedFaces] = useState({});
   const [holdProgress, setHoldProgress] = useState({});
 
   // Challenge mode state
-  const [showIntro, setShowIntro] = useState(true);
+  const [showCountdown, setShowCountdown] = useState(false);
   const [timerStarted, setTimerStarted] = useState(false);
   const [startTime, setStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0); // Lifted timer state
@@ -37,6 +39,8 @@ function App() {
   const [challengeComplete, setChallengeComplete] = useState(false);
   const [resetKey, setResetKey] = useState(0); // Key to force WebcamCapture remount
   const [easyMode, setEasyMode] = useState(false); // Easy mode - win after 4 instead of 8
+  const [justUnlockedExpression, setJustUnlockedExpression] = useState(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   // Use ref to avoid stale closure for easyMode
   const easyModeRef = useRef(easyMode);
@@ -60,6 +64,18 @@ function App() {
     console.log("[TIMER DEBUG] handleTimeUpdate called with elapsed:", elapsed);
     setElapsedTime(elapsed);
   }, []);
+
+  // Navigate to results page when challenge is complete
+  useEffect(() => {
+    if (challengeComplete && captures.length > 0 && completionTime !== null) {
+      navigate('/results', {
+        state: {
+          captures,
+          completionTime
+        }
+      });
+    }
+  }, [challengeComplete, captures, completionTime, navigate]);
 
   useEffect(() => {
     async function initialize() {
@@ -103,10 +119,7 @@ function App() {
   if (error) {
     return (
       <div className="app">
-        <header className="app-header">
-          <h1>Nailongify</h1>
-          <p>We are all Nailong</p>
-        </header>
+        <Header variant="simple" />
         <main className="app-main">
           <div className="error">
             <h2>Error</h2>
@@ -121,10 +134,7 @@ function App() {
   if (loading) {
     return (
       <div className="app">
-        <header className="app-header">
-          <h1>Nailongify</h1>
-          <p>We are all Nailong</p>
-        </header>
+        <Header variant="simple" />
         <main className="app-main">
           <div className="loading">
             <div className="spinner"></div>
@@ -149,13 +159,15 @@ function App() {
     setCaptureData(null);
   };
 
-  const handleCloseIntro = () => {
-    setShowIntro(false);
+  const handleStartTimer = () => {
+    console.log("[TIMER DEBUG] Showing countdown...");
+    setShowCountdown(true);
   };
 
-  const handleStartTimer = () => {
+  const handleCountdownComplete = () => {
     const now = Date.now();
-    console.log("[TIMER DEBUG] Starting timer at:", now);
+    console.log("[TIMER DEBUG] Countdown complete, starting timer at:", now);
+    setShowCountdown(false);
     setTimerStarted(true);
     setStartTime(now);
   };
@@ -168,6 +180,13 @@ function App() {
       captureImageData?.substring(0, 50)
     );
     console.log("[APP DEBUG] matchInfo:", matchInfo);
+
+    // Set just unlocked expression for MemeDisplay animation
+    setJustUnlockedExpression(expressionId);
+    // Clear it after a short delay
+    setTimeout(() => {
+      setJustUnlockedExpression(null);
+    }, 700);
 
     // Use ref to get the current easyMode value (avoids stale closure)
     const currentEasyMode = easyModeRef.current;
@@ -184,7 +203,7 @@ function App() {
       const allExpressions = [
         "smirk",
         "smiling",
-        "winking",
+        "sad",
         "cry",
         "angry",
         "woah-woah-woah",
@@ -271,41 +290,34 @@ function App() {
     setElapsedTime(0);
     setCompletionTime(null);
     setChallengeComplete(false);
-    setShowIntro(true);
+    setShowCountdown(false);
     setTimerStarted(false);
     setStartTime(null);
     setResetKey((prev) => prev + 1); // Force WebcamCapture to remount
   };
 
-  if (leaderboardMode) {
-    return <Leaderboard onBack={() => setLeaderboardMode(false)} />;
-  }
-
-  if (challengeComplete) {
-    return (
-      <EndScreen
-        captures={captures}
-        completionTime={completionTime}
-        onRestart={handleRestart}
-        onViewLeaderboard={() => setLeaderboardMode(true)}
-      />
-    );
-  }
-
   return (
     <div className="app">
-      {showIntro && <IntroModal onClose={handleCloseIntro} />}
+      {showCountdown && <Countdown onComplete={handleCountdownComplete} />}
 
-      <header className="app-header">
-        <h1>Nailongify</h1>
-        <p>We are all Nailong</p>
+      <Header>
         {!loading && !error && !calibrationMode && !captureMode && (
-          <div className="header-buttons">
+          <>
             <button
-              onClick={() => setLeaderboardMode(true)}
+              onClick={() => navigate('/leaderboard')}
               className="btn-leaderboard"
             >
-              🏆 Leaderboard
+              Leaderboard
+            </button>
+            <button
+              onClick={() => setShowInfoModal(true)}
+              className="btn-info-header"
+              title="How to play"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+              </svg>
+              How to Play
             </button>
             {!timerStarted && DEV && (
               <>
@@ -313,19 +325,50 @@ function App() {
                   onClick={() => setCalibrationMode(true)}
                   className="btn-calibration"
                 >
-                  ⚙️ Calibration Mode
+                  Calibration Mode
                 </button>
                 <button
                   onClick={() => setEasyMode((prev) => !prev)}
                   className={`btn-easy-mode ${easyMode ? "active" : ""}`}
                 >
-                  {easyMode ? "✓ Easy Mode (2/8)" : "Easy Mode (2/8)"}
+                  {easyMode ? "Easy Mode (2/8) [ON]" : "Easy Mode (2/8)"}
                 </button>
               </>
             )}
-          </div>
+          </>
         )}
-      </header>
+      </Header>
+
+      <button
+        onClick={() => navigate('/')}
+        style={{
+          position: 'fixed',
+          top: '1.76rem',
+          left: '1.76rem',
+          background: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          cursor: 'pointer',
+          padding: '0.5rem',
+          transition: 'transform 0.2s',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          zIndex: 100
+        }}
+        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        <img
+          src="/nailong/app-icon.png"
+          alt="Home"
+          style={{
+            width: '48px',
+            height: '48px',
+            display: 'block',
+            borderRadius: '50%'
+          }}
+        />
+      </button>
+
       <main className="app-main app-main-active">
         {calibrationMode ? (
           <CalibrationMode
@@ -337,12 +380,12 @@ function App() {
           <CaptureScreen captureData={captureData} onBack={handleBack} />
         ) : (
           <>
+            {showInfoModal && <IntroModal onClose={() => setShowInfoModal(false)} />}
+
             <UnlockableFaces
               memes={memes}
               unlockedFaces={unlockedFaces}
               holdProgress={holdProgress}
-              timerStarted={timerStarted}
-              onStartTimer={handleStartTimer}
             />
 
             <div className="content-grid">
@@ -356,7 +399,7 @@ function App() {
                   onCapture={handleCapture}
                   onUnlockFace={handleUnlockFace}
                   onHoldProgress={handleHoldProgress}
-                  autoStart={!showIntro}
+                  autoStart={true}
                   trackProgress={timerStarted}
                   unlockedFaces={unlockedFaces}
                   showTimer={timerStarted}
@@ -364,11 +407,24 @@ function App() {
                   isRunning={!challengeComplete}
                   onTimeUpdate={handleTimeUpdate}
                 />
+                {!timerStarted ? (
+                  <div className="webcam-start-button">
+                    <button className="btn-start-timer" onClick={handleStartTimer}>
+                      <span className="play-icon">▶</span> START
+                    </button>
+                  </div>
+                ) : (
+                  <div className="webcam-restart-button">
+                    <button className="btn-restart-timer" onClick={handleRestart}>
+                      ↻ Restart
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="meme-section">
                 <h2>Your Nailong Match</h2>
-                <MemeDisplay match={currentMatch} />
+                <MemeDisplay match={currentMatch} justUnlockedExpression={justUnlockedExpression} />
               </div>
             </div>
           </>
@@ -388,7 +444,7 @@ function App() {
         </p>
         <br></br>
         <p>
-          also thanks{" "}
+          also thanks to{" "}
           <a
             href="https://www.linkedin.com/in/mableliu/"
             target="_blank"

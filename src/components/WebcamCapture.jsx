@@ -365,20 +365,6 @@ function WebcamCapture({ memes, facialData, onMatchFound, onCapture, onUnlockFac
           )}
         </div>
       )}
-
-      {cameraActive && (
-        <div className="status-indicator">
-          <span className="status-dot"></span>
-          {detecting ? 'Detecting...' : 'Ensure your face is centered and well lit'}
-        </div>
-      )}
-
-      {!cameraActive && !error && (
-        <div className="status-indicator">
-          <span className="status-dot"></span>
-          Camera is off
-        </div>
-      )}
     </div>
   );
 }

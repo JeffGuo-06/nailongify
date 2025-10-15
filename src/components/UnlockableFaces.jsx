@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
-function UnlockableFaces({ memes, unlockedFaces, holdProgress, timerStarted, onStartTimer }) {
+function UnlockableFaces({ memes, unlockedFaces, holdProgress }) {
   const [showConfetti, setShowConfetti] = useState(false);
+  const [newlyUnlocked, setNewlyUnlocked] = useState({});
+  const previouslyUnlockedRef = useRef({});
 
   // Expression order for display
   const expressionOrder = [
     'smirk',
     'smiling',
-    'winking',
+    'sad',
     'cry',
     'angry',
     'woah-woah-woah',
@@ -26,17 +28,34 @@ function UnlockableFaces({ memes, unlockedFaces, holdProgress, timerStarted, onS
     }
   }, [unlockedFaces, showConfetti]);
 
+  // Track newly unlocked faces for animation
+  useEffect(() => {
+    Object.keys(unlockedFaces).forEach(expr => {
+      // Only trigger if this face just became unlocked and we haven't seen it before
+      if (unlockedFaces[expr] && !previouslyUnlockedRef.current[expr]) {
+        console.log('[UNLOCK ANIMATION] Just unlocked:', expr);
+
+        // Mark as previously unlocked (permanent)
+        previouslyUnlockedRef.current[expr] = true;
+
+        // Trigger animation
+        setNewlyUnlocked(prev => ({ ...prev, [expr]: true }));
+
+        // Clear the animation flag after animation completes
+        setTimeout(() => {
+          setNewlyUnlocked(prev => ({ ...prev, [expr]: false }));
+        }, 600);
+      }
+    });
+  }, [unlockedFaces]);
+
+  // Calculate unlocked count
+  const unlockedCount = Object.keys(unlockedFaces).filter(key => unlockedFaces[key]).length;
+  const totalCount = expressionOrder.length;
+
   return (
     <div className="unlockable-faces">
       {showConfetti && <Confetti />}
-
-      {!timerStarted && (
-        <div className="start-button-overlay">
-          <button className="btn-start-timer-overlay" onClick={onStartTimer}>
-            ⏱️ START TIMER!
-          </button>
-        </div>
-      )}
 
       <div className="faces-container">
         {expressionOrder.map(expressionId => {
@@ -48,21 +67,19 @@ function UnlockableFaces({ memes, unlockedFaces, holdProgress, timerStarted, onS
 
           return (
             <div key={expressionId} className="unlockable-face">
-              <div className={`face-image ${!isUnlocked ? 'locked' : 'unlocked'}`}>
+              <div className={`face-image ${!isUnlocked ? 'locked' : 'unlocked'} ${newlyUnlocked[expressionId] ? 'just-unlocked' : ''}`}>
                 <img src={meme.path} alt={meme.name} />
                 {!isUnlocked && <div className="blur-overlay" />}
                 {!isUnlocked && progress > 0 && (
                   <div className="progress-ring">
-                    <svg width="60" height="60">
-                      <circle
-                        cx="30"
-                        cy="30"
-                        r="25"
+                    <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <path
+                        d="M 10,2 L 90,2 Q 98,2 98,10 L 98,90 Q 98,98 90,98 L 10,98 Q 2,98 2,90 L 2,10 Q 2,2 10,2"
                         fill="none"
-                        stroke="#ff6b9d"
-                        strokeWidth="4"
-                        strokeDasharray={`${progress * 157} 157`}
-                        transform="rotate(-90 30 30)"
+                        stroke="#ffd414ff"
+                        strokeWidth="7"
+                        strokeDasharray={`${progress * 372} 372`}
+                        strokeLinecap="round"
                       />
                     </svg>
                   </div>
@@ -71,7 +88,7 @@ function UnlockableFaces({ memes, unlockedFaces, holdProgress, timerStarted, onS
                   <div className="unlock-badge">✓</div>
                 )}
               </div>
-              <div className="face-label">{expressionId.replace(/-/g, ' ')}</div>
+              <div className="face-label">{meme.name}</div>
             </div>
           );
         })}

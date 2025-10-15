@@ -338,7 +338,7 @@ function CalibrationMode({ memes, facialData, onBack }) {
             Back to App
           </button>
           <button onClick={exportCalibration} className="btn-primary">
-            📥 Export All Data
+            Export All Data
           </button>
         </div>
       </div>
