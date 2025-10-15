@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install)",
       "Bash(curl:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

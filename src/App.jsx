@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { loadModels, areModelsLoaded } from "./utils/faceDetection";
 import WebcamCapture from "./components/WebcamCapture";
 import MemeDisplay from "./components/MemeDisplay";
@@ -68,11 +69,11 @@ function App() {
   // Navigate to results page when challenge is complete
   useEffect(() => {
     if (challengeComplete && captures.length > 0 && completionTime !== null) {
-      navigate('/results', {
+      navigate("/results", {
         state: {
           captures,
-          completionTime
-        }
+          completionTime,
+        },
       });
     }
   }, [challengeComplete, captures, completionTime, navigate]);
@@ -304,7 +305,7 @@ function App() {
         {!loading && !error && !calibrationMode && !captureMode && (
           <>
             <button
-              onClick={() => navigate('/leaderboard')}
+              onClick={() => navigate("/leaderboard")}
               className="btn-leaderboard"
             >
               Leaderboard
@@ -314,8 +315,12 @@ function App() {
               className="btn-info-header"
               title="How to play"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
               </svg>
               How to Play
             </button>
@@ -340,31 +345,31 @@ function App() {
       </Header>
 
       <button
-        onClick={() => navigate('/')}
+        onClick={() => navigate("/")}
         style={{
-          position: 'fixed',
-          top: '1.76rem',
-          left: '1.76rem',
-          background: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          cursor: 'pointer',
-          padding: '0.5rem',
-          transition: 'transform 0.2s',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-          zIndex: 100
+          position: "fixed",
+          top: "1.76rem",
+          left: "1.76rem",
+          background: "white",
+          border: "none",
+          borderRadius: "50%",
+          cursor: "pointer",
+          padding: "0.5rem",
+          transition: "transform 0.2s",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+          zIndex: 100,
         }}
-        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
+        onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
       >
         <img
           src="/nailong/app-icon.png"
           alt="Home"
           style={{
-            width: '48px',
-            height: '48px',
-            display: 'block',
-            borderRadius: '50%'
+            width: "48px",
+            height: "48px",
+            display: "block",
+            borderRadius: "50%",
           }}
         />
       </button>
@@ -380,7 +385,9 @@ function App() {
           <CaptureScreen captureData={captureData} onBack={handleBack} />
         ) : (
           <>
-            {showInfoModal && <IntroModal onClose={() => setShowInfoModal(false)} />}
+            {showInfoModal && (
+              <IntroModal onClose={() => setShowInfoModal(false)} />
+            )}
 
             <UnlockableFaces
               memes={memes}
@@ -409,13 +416,19 @@ function App() {
                 />
                 {!timerStarted ? (
                   <div className="webcam-start-button">
-                    <button className="btn-start-timer" onClick={handleStartTimer}>
+                    <button
+                      className="btn-start-timer"
+                      onClick={handleStartTimer}
+                    >
                       <span className="play-icon">▶</span> START
                     </button>
                   </div>
                 ) : (
                   <div className="webcam-restart-button">
-                    <button className="btn-restart-timer" onClick={handleRestart}>
+                    <button
+                      className="btn-restart-timer"
+                      onClick={handleRestart}
+                    >
                       ↻ Restart
                     </button>
                   </div>
@@ -424,7 +437,10 @@ function App() {
 
               <div className="meme-section">
                 <h2>Your Nailong Match</h2>
-                <MemeDisplay match={currentMatch} justUnlockedExpression={justUnlockedExpression} />
+                <MemeDisplay
+                  match={currentMatch}
+                  justUnlockedExpression={justUnlockedExpression}
+                />
               </div>
             </div>
           </>
@@ -455,6 +471,7 @@ function App() {
           for being training data
         </p>
       </footer>
+      <Analytics />
     </div>
   );
 }
