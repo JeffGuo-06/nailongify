@@ -12,6 +12,7 @@ import Timer from "./components/Timer";
 import Countdown from "./components/Countdown";
 import Header from "./components/Header";
 import TipBox from "./components/TipBox";
+import { GameRecorder } from "./utils/videoRecorder";
 
 // DEV mode - set to true to show debug/dev features
 const DEV = false;
@@ -48,6 +49,11 @@ function App() {
   // Use ref to avoid stale closure for startTime
   const startTimeRef = useRef(startTime);
 
+  // Video recording refs
+  const videoRecorderRef = useRef(null);
+  const videoElementRef = useRef(null);
+  const [replayVideoBlob, setReplayVideoBlob] = useState(null);
+
   // Update ref when easyMode changes
   useEffect(() => {
     easyModeRef.current = easyMode;
@@ -66,15 +72,75 @@ function App() {
     setElapsedTime(elapsed);
   }, []);
 
+  // Update recorder data during recording
+  useEffect(() => {
+    if (videoRecorderRef.current && videoRecorderRef.current.isRecording) {
+      videoRecorderRef.current.recordingData = {
+        videoElement: videoElementRef.current,
+        memes,
+        unlockedFaces,
+        holdProgress,
+        currentMatch,
+        getElapsedTime: () => elapsedTime,
+      };
+    }
+  }, [currentMatch, unlockedFaces, holdProgress, elapsedTime, memes]);
+
   // Navigate to results page when challenge is complete
   useEffect(() => {
     if (challengeComplete && captures.length > 0 && completionTime !== null) {
-      navigate("/results", {
-        state: {
-          captures,
-          completionTime,
-        },
-      });
+      console.log("[APP] ========== Challenge Complete ==========");
+      console.log("[APP] Captures:", captures.length);
+      console.log("[APP] Completion time:", completionTime);
+      console.log("[APP] Has video recorder:", !!videoRecorderRef.current);
+      console.log("[APP] Is recording:", videoRecorderRef.current?.isRecording);
+
+      // Stop recording if still recording
+      if (videoRecorderRef.current) {
+        console.log("[APP] Stopping video recording...");
+        videoRecorderRef.current
+          .stopRecording()
+          .then((result) => {
+            console.log("[APP] ✅ Video recording stopped successfully");
+            console.log("[APP]   - Has blob:", !!result?.blob);
+            console.log("[APP]   - Blob size:", result?.blob?.size, "bytes");
+            console.log("[APP]   - Blob type:", result?.blob?.type);
+            console.log("[APP]   - Duration:", result?.duration, "seconds");
+            setReplayVideoBlob(result?.blob || null);
+
+            // Navigate after video is processed
+            console.log("[APP] Navigating to results with video...");
+            navigate("/results", {
+              state: {
+                captures,
+                completionTime,
+                replayVideoBlob: result?.blob || null,
+              },
+            });
+          })
+          .catch((err) => {
+            console.error("[APP] ❌ Error stopping video recording:", err);
+            // Navigate anyway without video
+            console.log("[APP] Navigating to results without video...");
+            navigate("/results", {
+              state: {
+                captures,
+                completionTime,
+                replayVideoBlob: null,
+              },
+            });
+          });
+      } else {
+        console.log("[APP] No video recorder, navigating without video...");
+        // No recording, navigate without video
+        navigate("/results", {
+          state: {
+            captures,
+            completionTime,
+            replayVideoBlob: null,
+          },
+        });
+      }
     }
   }, [challengeComplete, captures, completionTime, navigate]);
 
@@ -165,12 +231,79 @@ function App() {
     setShowCountdown(true);
   };
 
-  const handleCountdownComplete = () => {
+  const handleCountdownComplete = async () => {
     const now = Date.now();
     console.log("[TIMER DEBUG] Countdown complete, starting timer at:", now);
     setShowCountdown(false);
     setTimerStarted(true);
     setStartTime(now);
+
+    // Start video recording
+    console.log(
+      "[APP] ========== Attempting to Start Video Recording =========="
+    );
+    console.log("[APP] Has video element:", !!videoElementRef.current);
+    console.log("[APP] Has video recorder:", !!videoRecorderRef.current);
+    console.log(
+      "[APP] Video element ready state:",
+      videoElementRef.current?.readyState
+    );
+
+    if (videoElementRef.current && videoRecorderRef.current) {
+      try {
+        console.log("[APP] Starting video recording...");
+        console.log("[APP] Recording data:");
+        console.log("[APP]   - Video element:", !!videoElementRef.current);
+        console.log("[APP]   - Memes count:", memes.length);
+        console.log(
+          "[APP]   - Unlocked faces:",
+          Object.keys(unlockedFaces).length
+        );
+        console.log(
+          "[APP]   - Current match:",
+          currentMatch?.meme?.name || "none"
+        );
+
+        await videoRecorderRef.current.startRecording({
+          videoElement: videoElementRef.current,
+          memes,
+          unlockedFaces,
+          holdProgress,
+          currentMatch,
+          getElapsedTime: () => elapsedTime,
+        });
+        console.log("[APP] ✅ Video recording started successfully");
+      } catch (err) {
+        console.error("[APP] ❌ Error starting video recording:", err);
+        console.error("[APP] Error stack:", err.stack);
+      }
+    } else {
+      console.warn(
+        "[APP] ⚠️ Cannot start recording - missing video element or recorder"
+      );
+    }
+  };
+
+  const handleVideoReady = (videoElement) => {
+    console.log("[APP] ========== Video Element Ready ==========");
+    console.log("[APP] Video element:", !!videoElement);
+    console.log(
+      "[APP] Video dimensions:",
+      videoElement?.videoWidth,
+      "x",
+      videoElement?.videoHeight
+    );
+    console.log("[APP] Video ready state:", videoElement?.readyState);
+    videoElementRef.current = videoElement;
+
+    // Initialize recorder if not already done
+    if (!videoRecorderRef.current) {
+      console.log("[APP] Creating new GameRecorder instance...");
+      videoRecorderRef.current = new GameRecorder();
+      console.log("[APP] ✅ GameRecorder created");
+    } else {
+      console.log("[APP] GameRecorder already exists");
+    }
   };
 
   const handleUnlockFace = (expressionId, captureImageData, matchInfo) => {
@@ -284,6 +417,13 @@ function App() {
   const handleRestart = () => {
     console.log("[APP DEBUG] Restarting game...");
     console.log("[TIMER DEBUG] Resetting timer state");
+
+    // Cleanup video recorder
+    if (videoRecorderRef.current) {
+      videoRecorderRef.current.cleanup();
+      videoRecorderRef.current = null;
+    }
+
     // Reset everything
     setUnlockedFaces({});
     setHoldProgress({});
@@ -294,6 +434,7 @@ function App() {
     setShowCountdown(false);
     setTimerStarted(false);
     setStartTime(null);
+    setReplayVideoBlob(null);
     setResetKey((prev) => prev + 1); // Force WebcamCapture to remount
   };
 
@@ -413,6 +554,7 @@ function App() {
                   startTime={startTime}
                   isRunning={!challengeComplete}
                   onTimeUpdate={handleTimeUpdate}
+                  onVideoReady={handleVideoReady}
                 />
                 {!timerStarted ? (
                   <div className="webcam-start-button">
@@ -448,19 +590,21 @@ function App() {
       </main>
       <footer className="app-footer">
         <p>
-          hi i hope you enjoy nailongify, check out some of my other stuff at{" "}
+          hi i hope you enjoy nailongify, check out some of my other fun stuff
+          at{" "}
           <a
-            href="https://guojeff.com"
+            href="https://guojeff.com/fun"
             target="_blank"
             rel="noopener noreferrer"
           >
             guojeff.com
           </a>
-          . i promise i don't just make bullshit
+          . the support for nailongify has been crazy, i seriously appreciate
+          everyone who has played it.
         </p>
         <br></br>
         <p>
-          also thanks to{" "}
+          also thank you to{" "}
           <a
             href="https://www.linkedin.com/in/mableliu/"
             target="_blank"
@@ -468,7 +612,7 @@ function App() {
           >
             mable
           </a>{" "}
-          for being training data
+          for being the head of QA at nailongify
         </p>
       </footer>
       <Analytics />
