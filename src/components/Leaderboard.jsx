@@ -14,6 +14,7 @@ function Leaderboard() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [previewCarouselIndex, setPreviewCarouselIndex] = useState(0);
   const [previewPosition, setPreviewPosition] = useState({ top: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const tableContainerRef = useRef(null);
   const rowRefs = useRef({});
 
@@ -24,7 +25,22 @@ function Leaderboard() {
   // Reset carousel index when entry changes
   useEffect(() => {
     setPreviewCarouselIndex(0);
+    setIsFullscreen(false);
   }, [selectedEntry]);
+
+  // Handle ESC key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    if (isFullscreen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isFullscreen]);
 
   // Handle entry click and calculate preview position
   const handleEntryClick = (entry) => {
@@ -409,6 +425,33 @@ function Leaderboard() {
                             boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
                           }}
                         >
+                          {/* Fullscreen button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsFullscreen(true);
+                            }}
+                            style={{
+                              position: "absolute",
+                              top: "12px",
+                              right: "60px",
+                              background: "rgba(0, 0, 0, 0.6)",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "50%",
+                              width: "36px",
+                              height: "36px",
+                              fontSize: "1.2rem",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              zIndex: 10,
+                            }}
+                          >
+                            ⛶
+                          </button>
+
                           {/* Close button */}
                           <button
                             onClick={() => setSelectedEntry(null)}
@@ -675,6 +718,29 @@ function Leaderboard() {
                           zIndex: 100,
                         }}
                       >
+                        {/* Fullscreen button */}
+                        <button
+                          onClick={() => setIsFullscreen(true)}
+                          style={{
+                            position: "absolute",
+                            top: "12px",
+                            right: "52px",
+                            background: "rgba(0, 0, 0, 0.1)",
+                            color: "#666",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: "32px",
+                            height: "32px",
+                            fontSize: "1.1rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          ⛶
+                        </button>
+
                         {/* Close button */}
                         <button
                           onClick={() => setSelectedEntry(null)}
@@ -927,6 +993,253 @@ function Leaderboard() {
           )}
         </div>
       </main>
+
+      {/* Fullscreen overlay */}
+      {isFullscreen && selectedEntry && (() => {
+        // Build media array (video first, then image)
+        const media = [];
+        if (selectedEntry.video_url) {
+          media.push({ type: "video", url: selectedEntry.video_url });
+        }
+        if (selectedEntry.capture_image_url) {
+          media.push({
+            type: "image",
+            url: selectedEntry.capture_image_url,
+          });
+        }
+
+        const currentMedia = media[previewCarouselIndex];
+        const hasMedia = media.length > 0;
+
+        return (
+          <div
+            onClick={() => setIsFullscreen(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.95)",
+              zIndex: 10000,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "2rem",
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "relative",
+                maxWidth: "90vw",
+                maxHeight: "90vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {/* Close button */}
+              <button
+                onClick={() => setIsFullscreen(false)}
+                style={{
+                  position: "absolute",
+                  top: "-50px",
+                  right: "0",
+                  background: "rgba(255, 255, 255, 0.2)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "44px",
+                  height: "44px",
+                  fontSize: "2rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 10,
+                  transition: "background 0.2s",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.3)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+                }}
+              >
+                ×
+              </button>
+
+              {hasMedia && (
+                <>
+                  {/* Navigation buttons */}
+                  {media.length > 1 && (
+                    <>
+                      <button
+                        onClick={() =>
+                          setPreviewCarouselIndex(
+                            (previewCarouselIndex - 1 + media.length) %
+                              media.length
+                          )
+                        }
+                        style={{
+                          position: "absolute",
+                          left: "-60px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          zIndex: 10,
+                          background: "rgba(255, 255, 255, 0.2)",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "48px",
+                          height: "48px",
+                          fontSize: "2rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "background 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.3)";
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+                        }}
+                      >
+                        ‹
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setPreviewCarouselIndex(
+                            (previewCarouselIndex + 1) % media.length
+                          )
+                        }
+                        style={{
+                          position: "absolute",
+                          right: "-60px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          zIndex: 10,
+                          background: "rgba(255, 255, 255, 0.2)",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "48px",
+                          height: "48px",
+                          fontSize: "2rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "background 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.3)";
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+                        }}
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
+
+                  {/* Media display */}
+                  <div
+                    style={{
+                      borderRadius: "12px",
+                      overflow: "hidden",
+                      maxWidth: "100%",
+                      maxHeight: "90vh",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {currentMedia.type === "video" ? (
+                      <video
+                        src={currentMedia.url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        style={{
+                          maxWidth: "90vw",
+                          maxHeight: "90vh",
+                          objectFit: "contain",
+                        }}
+                        onLoadedMetadata={(e) => {
+                          e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
+                        }}
+                        onLoadedData={(e) => {
+                          if (e.target.playbackRate !== VIDEO_PLAYBACK_SPEED)
+                            e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
+                        }}
+                        onCanPlay={(e) => {
+                          if (e.target.playbackRate !== VIDEO_PLAYBACK_SPEED)
+                            e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
+                        }}
+                        onPlay={(e) => {
+                          if (e.target.playbackRate !== VIDEO_PLAYBACK_SPEED)
+                            e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src={currentMedia.url}
+                        alt={`${selectedEntry.nickname}'s capture`}
+                        style={{
+                          maxWidth: "90vw",
+                          maxHeight: "90vh",
+                          objectFit: "contain",
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Carousel dots */}
+                  {media.length > 1 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "-40px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        display: "flex",
+                        gap: "10px",
+                      }}
+                    >
+                      {media.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setPreviewCarouselIndex(idx)}
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            borderRadius: "50%",
+                            border: "none",
+                            background:
+                              idx === previewCarouselIndex
+                                ? "white"
+                                : "rgba(255, 255, 255, 0.4)",
+                            cursor: "pointer",
+                            padding: 0,
+                            transition: "background 0.2s",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <footer className="app-footer">
         <p>
