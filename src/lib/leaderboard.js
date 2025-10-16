@@ -160,24 +160,48 @@ export async function fetchLeaderboard(limit = 100) {
 /**
  * Get player's rank for a given time
  * @param {number} timeMs - Time in milliseconds
- * @returns {Promise<{success: boolean, rank?: number, error?: string}>}
+ * @returns {Promise<{success: boolean, rank?: number, totalEntries?: number, error?: string}>}
  */
 export async function getPlayerRank(timeMs) {
   try {
     // Count how many entries have a better (lower) time
-    const { count, error } = await supabase
+    const { count: betterCount, error: betterError } = await supabase
       .from('leaderboard')
       .select('*', { count: 'exact', head: true })
       .lt('time_ms', timeMs);
 
-    if (error) {
-      console.error('[LEADERBOARD] Error getting rank:', error);
-      return { success: false, error: error.message };
+    if (betterError) {
+      console.error('[LEADERBOARD] Error getting rank:', betterError);
+      return { success: false, error: betterError.message };
+    }
+
+    // Fetch total entries from counter table (much faster than counting)
+    const { data: statsData, error: statsError } = await supabase
+      .from('leaderboard_stats')
+      .select('total_entries')
+      .eq('id', 1)
+      .single();
+
+    if (statsError) {
+      console.error('[LEADERBOARD] Error getting total count:', statsError);
+      // Fallback to counting if stats table doesn't exist
+      const { count: totalCount, error: countError } = await supabase
+        .from('leaderboard')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) {
+        return { success: false, error: 'Failed to get total entries' };
+      }
+
+      const rank = (betterCount || 0) + 1;
+      const totalEntries = totalCount || 0;
+      return { success: true, rank, totalEntries };
     }
 
     // Rank is count + 1 (if 0 people are faster, you're rank 1)
-    const rank = (count || 0) + 1;
-    return { success: true, rank };
+    const rank = (betterCount || 0) + 1;
+    const totalEntries = statsData?.total_entries || 0;
+    return { success: true, rank, totalEntries };
   } catch (err) {
     console.error('[LEADERBOARD] Unexpected error:', err);
     return { success: false, error: 'Failed to get rank' };
