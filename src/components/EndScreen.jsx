@@ -1130,12 +1130,12 @@ function EndScreen({
                 <div className="submit-form">
                   <input
                     type="text"
-                    placeholder="Enter nickname (max 20 chars)"
+                    placeholder="Enter nickname (max 50 chars)"
                     value={nickname}
                     onChange={(e) =>
-                      setNickname(removeEmojis(e.target.value).slice(0, 20))
+                      setNickname(removeEmojis(e.target.value).slice(0, 50))
                     }
-                    maxLength={20}
+                    maxLength={50}
                     disabled={submitting}
                     onKeyPress={(e) =>
                       e.key === "Enter" &&
