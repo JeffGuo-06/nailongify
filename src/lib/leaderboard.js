@@ -86,7 +86,7 @@ export async function uploadReplayVideo(videoBlob, nickname) {
 
 /**
  * Submit a new leaderboard entry
- * @param {string} nickname - Player's nickname (1-20 characters)
+ * @param {string} nickname - Player's nickname (1-50 characters)
  * @param {number} timeMs - Completion time in milliseconds
  * @param {string} captureImageUrl - Optional URL to the capture grid image
  * @param {string} videoUrl - Optional URL to the replay video
@@ -98,8 +98,8 @@ export async function submitLeaderboardEntry(nickname, timeMs, captureImageUrl =
     if (!nickname || nickname.trim().length === 0) {
       return { success: false, error: 'Nickname is required' };
     }
-    if (nickname.length > 20) {
-      return { success: false, error: 'Nickname must be 20 characters or less' };
+    if (nickname.length > 50) {
+      return { success: false, error: 'Nickname must be 50 characters or less' };
     }
     if (!timeMs || timeMs <= 0) {
       return { success: false, error: 'Invalid time value' };
