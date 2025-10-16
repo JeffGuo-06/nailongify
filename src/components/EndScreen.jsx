@@ -1,8 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
-import { submitLeaderboardEntry, getPlayerRank, uploadCaptureImage, uploadReplayVideo } from '../lib/leaderboard';
-import { MAX_VIDEO_DURATION_SECONDS, VIDEO_PLAYBACK_SPEED } from '../utils/videoRecorder';
+import { useState, useEffect, useRef } from "react";
+import {
+  submitLeaderboardEntry,
+  getPlayerRank,
+  uploadCaptureImage,
+  uploadReplayVideo,
+} from "../lib/leaderboard";
+import {
+  MAX_VIDEO_DURATION_SECONDS,
+  VIDEO_PLAYBACK_SPEED,
+} from "../utils/videoRecorder";
 
-function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onViewLeaderboard }) {
+function EndScreen({
+  captures,
+  completionTime,
+  replayVideoBlob,
+  onRestart,
+  onViewLeaderboard,
+}) {
   const [compositeGraphics, setCompositeGraphics] = useState([]);
   const [loading, setLoading] = useState(true);
   const downloadTimeoutsRef = useRef([]);
@@ -16,54 +30,111 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
   const [videoExceedsLimit, setVideoExceedsLimit] = useState(false);
 
   // Leaderboard state
-  const [nickname, setNickname] = useState('');
+  const [nickname, setNickname] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [playerRank, setPlayerRank] = useState(null);
+  const [projectedRank, setProjectedRank] = useState(null);
+  const [totalEntries, setTotalEntries] = useState(null);
+  const [loadingRank, setLoadingRank] = useState(true);
+
+  // Fetch projected rank on mount
+  useEffect(() => {
+    const fetchProjectedRank = async () => {
+      console.log(
+        "[END SCREEN] Fetching projected rank for time:",
+        completionTime
+      );
+      setLoadingRank(true);
+
+      const rankResult = await getPlayerRank(completionTime);
+      if (rankResult.success) {
+        console.log("[END SCREEN] Projected rank:", rankResult.rank);
+        console.log("[END SCREEN] Total entries:", rankResult.totalEntries);
+        setProjectedRank(rankResult.rank);
+        setTotalEntries(rankResult.totalEntries);
+      } else {
+        console.error(
+          "[END SCREEN] Failed to fetch projected rank:",
+          rankResult.error
+        );
+      }
+
+      setLoadingRank(false);
+    };
+
+    if (completionTime) {
+      fetchProjectedRank();
+    }
+  }, [completionTime]);
 
   // Process video blob if provided
   useEffect(() => {
     if (replayVideoBlob) {
-      console.log('[END SCREEN] Processing replay video...');
-      console.log('[END SCREEN] Video blob size:', replayVideoBlob.size, 'bytes');
-      console.log('[END SCREEN] Video blob type:', replayVideoBlob.type);
+      console.log("[END SCREEN] Processing replay video...");
+      console.log(
+        "[END SCREEN] Video blob size:",
+        replayVideoBlob.size,
+        "bytes"
+      );
+      console.log("[END SCREEN] Video blob type:", replayVideoBlob.type);
 
       // Create URL from blob
       const url = URL.createObjectURL(replayVideoBlob);
-      console.log('[END SCREEN] Created video URL:', url.substring(0, 50) + '...');
+      console.log(
+        "[END SCREEN] Created video URL:",
+        url.substring(0, 50) + "..."
+      );
       setVideoUrl(url);
 
       // Check if game time exceeds the limit
       const completionTimeSeconds = completionTime / 1000;
       const exceedsLimit = completionTimeSeconds > MAX_VIDEO_DURATION_SECONDS;
 
-      console.log('[END SCREEN] Duration check based on game time:');
-      console.log('[END SCREEN]   - Completion time:', completionTime, 'ms');
-      console.log('[END SCREEN]   - Completion time:', completionTimeSeconds, 'seconds');
-      console.log('[END SCREEN]   - Max allowed:', MAX_VIDEO_DURATION_SECONDS, 'seconds');
-      console.log('[END SCREEN]   - Exceeds limit:', exceedsLimit);
-      console.log('[END SCREEN]   - Playback speed:', VIDEO_PLAYBACK_SPEED + 'x');
-      console.log('[END SCREEN]   - Effective video duration (at ' + VIDEO_PLAYBACK_SPEED + 'x):', (completionTimeSeconds / VIDEO_PLAYBACK_SPEED).toFixed(2), 'seconds');
+      console.log("[END SCREEN] Duration check based on game time:");
+      console.log("[END SCREEN]   - Completion time:", completionTime, "ms");
+      console.log(
+        "[END SCREEN]   - Completion time:",
+        completionTimeSeconds,
+        "seconds"
+      );
+      console.log(
+        "[END SCREEN]   - Max allowed:",
+        MAX_VIDEO_DURATION_SECONDS,
+        "seconds"
+      );
+      console.log("[END SCREEN]   - Exceeds limit:", exceedsLimit);
+      console.log(
+        "[END SCREEN]   - Playback speed:",
+        VIDEO_PLAYBACK_SPEED + "x"
+      );
+      console.log(
+        "[END SCREEN]   - Effective video duration (at " +
+          VIDEO_PLAYBACK_SPEED +
+          "x):",
+        (completionTimeSeconds / VIDEO_PLAYBACK_SPEED).toFixed(2),
+        "seconds"
+      );
 
       setVideoDuration(completionTimeSeconds);
       setVideoExceedsLimit(exceedsLimit);
 
       // Cleanup URL on unmount
       return () => {
-        console.log('[END SCREEN] Cleaning up video URL');
+        console.log("[END SCREEN] Cleaning up video URL");
         URL.revokeObjectURL(url);
       };
     } else {
-      console.log('[END SCREEN] No replay video blob provided');
+      console.log("[END SCREEN] No replay video blob provided");
     }
   }, [replayVideoBlob, completionTime]);
 
   useEffect(() => {
-    console.log('[END SCREEN DEBUG] captures:', captures);
-    console.log('[END SCREEN DEBUG] captures.length:', captures?.length);
-    console.log('[END SCREEN DEBUG] completionTime:', completionTime);
-    console.log('[END SCREEN DEBUG] videoUrl:', videoUrl);
+    console.log("[END SCREEN DEBUG] captures:", captures);
+    console.log("[END SCREEN DEBUG] captures.length:", captures?.length);
+    console.log("[END SCREEN DEBUG] completionTime:", completionTime);
+    console.log("[END SCREEN DEBUG] videoUrl:", videoUrl);
 
     // Generate all composite graphics (including video if available)
     if (captures && captures.length > 0) {
@@ -72,12 +143,18 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
   }, [captures, completionTime, videoUrl, videoExceedsLimit, videoDuration]);
 
   const generateCompositeGraphic = async (capture) => {
-    console.log('[COMPOSITE DEBUG] Generating graphic for:', capture.expressionId);
-    console.log('[COMPOSITE DEBUG] memePath:', capture.memePath);
-    console.log('[COMPOSITE DEBUG] imageData length:', capture.imageData?.length);
+    console.log(
+      "[COMPOSITE DEBUG] Generating graphic for:",
+      capture.expressionId
+    );
+    console.log("[COMPOSITE DEBUG] memePath:", capture.memePath);
+    console.log(
+      "[COMPOSITE DEBUG] imageData length:",
+      capture.imageData?.length
+    );
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
     // Canvas dimensions - scaled to 0.48x (0.6 × 0.8)
     const width = 672;
@@ -91,27 +168,27 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
     // Background - white with gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#ffffff');
-    gradient.addColorStop(1, '#f8f9fa');
+    gradient.addColorStop(0, "#ffffff");
+    gradient.addColorStop(1, "#f8f9fa");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
     // Title "Nailongify" with better styling (scaled to 0.48x)
-    ctx.fillStyle = '#ff6b9d';
-    ctx.font = 'bold 34px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Nailongify', width / 2, 48);
+    ctx.fillStyle = "#ff6b9d";
+    ctx.font = "bold 34px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Nailongify", width / 2, 48);
 
     try {
       // Load user capture
       const userImg = new Image();
       await new Promise((resolve, reject) => {
         userImg.onload = () => {
-          console.log('[COMPOSITE DEBUG] User image loaded successfully');
+          console.log("[COMPOSITE DEBUG] User image loaded successfully");
           resolve();
         };
         userImg.onerror = (e) => {
-          console.error('[COMPOSITE DEBUG] User image failed to load:', e);
+          console.error("[COMPOSITE DEBUG] User image failed to load:", e);
           reject(e);
         };
         userImg.src = capture.imageData;
@@ -119,29 +196,37 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
       // Load meme image - ensure it's a proper path
       if (!capture.memePath) {
-        console.error('[COMPOSITE DEBUG] memePath is undefined! Cannot load meme image');
-        throw new Error('memePath is undefined');
+        console.error(
+          "[COMPOSITE DEBUG] memePath is undefined! Cannot load meme image"
+        );
+        throw new Error("memePath is undefined");
       }
 
       const memeImg = new Image();
-      const memePath = capture.memePath.startsWith('/') ? capture.memePath : `/${capture.memePath}`;
-      console.log('[COMPOSITE DEBUG] Loading meme from:', memePath);
+      const memePath = capture.memePath.startsWith("/")
+        ? capture.memePath
+        : `/${capture.memePath}`;
+      console.log("[COMPOSITE DEBUG] Loading meme from:", memePath);
 
       await new Promise((resolve, reject) => {
         memeImg.onload = () => {
-          console.log('[COMPOSITE DEBUG] Meme image loaded successfully');
+          console.log("[COMPOSITE DEBUG] Meme image loaded successfully");
           resolve();
         };
         memeImg.onerror = (e) => {
-          console.error('[COMPOSITE DEBUG] Meme image failed to load from:', memePath, e);
+          console.error(
+            "[COMPOSITE DEBUG] Meme image failed to load from:",
+            memePath,
+            e
+          );
           reject(e);
         };
         memeImg.src = memePath;
       });
 
       const imageY = 77;
-      const leftImageX = (width / 2) - (imageSize + gap / 2);
-      const rightImageX = (width / 2) + (gap / 2);
+      const leftImageX = width / 2 - (imageSize + gap / 2);
+      const rightImageX = width / 2 + gap / 2;
 
       // Draw white rounded rect backgrounds for images
       const drawRoundedRect = (x, y, w, h, radius) => {
@@ -160,11 +245,17 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
       // Draw shadow for left image (scaled to 0.48x)
       ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+      ctx.shadowColor = "rgba(0, 0, 0, 0.15)";
       ctx.shadowBlur = 14;
       ctx.shadowOffsetY = 5;
-      ctx.fillStyle = '#ffffff';
-      drawRoundedRect(leftImageX - 7, imageY - 7, imageSize + 14, imageSize + 14, 10);
+      ctx.fillStyle = "#ffffff";
+      drawRoundedRect(
+        leftImageX - 7,
+        imageY - 7,
+        imageSize + 14,
+        imageSize + 14,
+        10
+      );
       ctx.fill();
       ctx.restore();
 
@@ -179,11 +270,17 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
       // Draw shadow for right image (scaled to 0.48x)
       ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+      ctx.shadowColor = "rgba(0, 0, 0, 0.15)";
       ctx.shadowBlur = 14;
       ctx.shadowOffsetY = 5;
-      ctx.fillStyle = '#ffffff';
-      drawRoundedRect(rightImageX - 7, imageY - 7, imageSize + 14, imageSize + 14, 10);
+      ctx.fillStyle = "#ffffff";
+      drawRoundedRect(
+        rightImageX - 7,
+        imageY - 7,
+        imageSize + 14,
+        imageSize + 14,
+        10
+      );
       ctx.fill();
       ctx.restore();
 
@@ -198,15 +295,19 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
       const labelY = imageY + imageSize + 24;
 
       // User label
-      ctx.fillStyle = '#6c757d';
-      ctx.font = '600 14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Your Face', leftImageX + imageSize / 2, labelY);
+      ctx.fillStyle = "#6c757d";
+      ctx.font = "600 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Your Face", leftImageX + imageSize / 2, labelY);
 
       // Meme label with name
-      ctx.fillStyle = '#6c757d';
-      ctx.font = '600 14px sans-serif';
-      ctx.fillText(capture.expressionName.toUpperCase(), rightImageX + imageSize / 2, labelY);
+      ctx.fillStyle = "#6c757d";
+      ctx.font = "600 14px sans-serif";
+      ctx.fillText(
+        capture.expressionName.toUpperCase(),
+        rightImageX + imageSize / 2,
+        labelY
+      );
 
       // Similarity score with background badge (scaled to 0.48x)
       const badgeY = height - 48;
@@ -216,11 +317,16 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
       // Draw badge background with gradient
       ctx.save();
-      const badgeGradient = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight);
-      badgeGradient.addColorStop(0, '#ff6b9d');
-      badgeGradient.addColorStop(1, '#ff4581');
+      const badgeGradient = ctx.createLinearGradient(
+        badgeX,
+        badgeY,
+        badgeX + badgeWidth,
+        badgeY + badgeHeight
+      );
+      badgeGradient.addColorStop(0, "#ff6b9d");
+      badgeGradient.addColorStop(1, "#ff4581");
       ctx.fillStyle = badgeGradient;
-      ctx.shadowColor = 'rgba(255, 107, 157, 0.4)';
+      ctx.shadowColor = "rgba(255, 107, 157, 0.4)";
       ctx.shadowBlur = 10;
       ctx.shadowOffsetY = 2;
       drawRoundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 7);
@@ -228,26 +334,38 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
       ctx.restore();
 
       // Draw similarity text
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 25px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${Math.round(capture.similarity)}% Match`, width / 2, badgeY + 27);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 25px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `${Math.round(capture.similarity)}% Match`,
+        width / 2,
+        badgeY + 27
+      );
 
       return {
-        dataUrl: canvas.toDataURL('image/png'),
-        capture: capture
+        dataUrl: canvas.toDataURL("image/png"),
+        capture: capture,
       };
     } catch (error) {
-      console.error('Error creating composite for', capture.expressionId, error);
+      console.error(
+        "Error creating composite for",
+        capture.expressionId,
+        error
+      );
       return null;
     }
   };
 
   const generateAllCapturesComposite = async (captures) => {
-    console.log('[ALL CAPTURES DEBUG] Generating grid composite for', captures.length, 'captures');
+    console.log(
+      "[ALL CAPTURES DEBUG] Generating grid composite for",
+      captures.length,
+      "captures"
+    );
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
     // Canvas dimensions for 4x4 grid layout (4 rows, 4 columns) - scaled to 0.48x (0.6 × 0.8)
     // Each row has 2 pairs: [User][Nailong] [User][Nailong]
@@ -258,24 +376,24 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
     const rows = 4;
     const cols = 4;
 
-    const width = (imageSize * cols) + (gap * 2) + (pairGap) + (padding * 2);
-    const height = (imageSize * rows) + (gap * (rows - 1)) + (padding * 2) + 48; // Extra space for title
+    const width = imageSize * cols + gap * 2 + pairGap + padding * 2;
+    const height = imageSize * rows + gap * (rows - 1) + padding * 2 + 48; // Extra space for title
 
     canvas.width = width;
     canvas.height = height;
 
     // Background - white with gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#ffffff');
-    gradient.addColorStop(1, '#f8f9fa');
+    gradient.addColorStop(0, "#ffffff");
+    gradient.addColorStop(1, "#f8f9fa");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
     // Title "Nailongify" with better styling (scaled to 0.48x)
-    ctx.fillStyle = '#ff6b9d';
-    ctx.font = 'bold 27px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Nailongify', width / 2, 34);
+    ctx.fillStyle = "#ff6b9d";
+    ctx.font = "bold 27px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Nailongify", width / 2, 34);
 
     // Helper function for rounded rectangles
     const drawRoundedRect = (x, y, w, h, radius) => {
@@ -307,7 +425,9 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
         // Load meme image
         const memeImg = new Image();
-        const memePath = capture.memePath.startsWith('/') ? capture.memePath : `/${capture.memePath}`;
+        const memePath = capture.memePath.startsWith("/")
+          ? capture.memePath
+          : `/${capture.memePath}`;
         await new Promise((resolve, reject) => {
           memeImg.onload = resolve;
           memeImg.onerror = reject;
@@ -318,7 +438,7 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
           userImg,
           memeImg,
           expressionName: capture.expressionName,
-          similarity: capture.similarity
+          similarity: capture.similarity,
         });
       }
 
@@ -329,7 +449,7 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
         const isFirstPair = index % 2 === 0; // Left pair or right pair
 
         const row = pairIndex; // 0-3
-        const startY = padding + 48 + (row * (imageSize + gap));
+        const startY = padding + 48 + row * (imageSize + gap);
 
         // Calculate X positions
         let userX, memeX;
@@ -340,15 +460,16 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
         } else {
           // Second pair: right side
           userX = padding + imageSize + gap + imageSize + pairGap;
-          memeX = padding + imageSize + gap + imageSize + pairGap + imageSize + gap;
+          memeX =
+            padding + imageSize + gap + imageSize + pairGap + imageSize + gap;
         }
 
         // Draw user face with shadow (scaled to 0.48x)
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+        ctx.shadowColor = "rgba(0, 0, 0, 0.1)";
         ctx.shadowBlur = 7;
         ctx.shadowOffsetY = 2;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = "#ffffff";
         drawRoundedRect(userX - 2, startY - 2, imageSize + 4, imageSize + 4, 5);
         ctx.fill();
         ctx.restore();
@@ -364,10 +485,10 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
         // Draw Nailong meme with shadow (scaled to 0.48x)
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+        ctx.shadowColor = "rgba(0, 0, 0, 0.1)";
         ctx.shadowBlur = 7;
         ctx.shadowOffsetY = 2;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = "#ffffff";
         drawRoundedRect(memeX - 2, startY - 2, imageSize + 4, imageSize + 4, 5);
         ctx.fill();
         ctx.restore();
@@ -380,78 +501,107 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
         ctx.restore();
       });
 
-      console.log('[ALL CAPTURES DEBUG] Grid composite generated successfully');
+      console.log("[ALL CAPTURES DEBUG] Grid composite generated successfully");
 
       return {
-        dataUrl: canvas.toDataURL('image/png'),
-        capture: { expressionId: 'all-captures', expressionName: 'All Expressions' }
+        dataUrl: canvas.toDataURL("image/png"),
+        capture: {
+          expressionId: "all-captures",
+          expressionName: "All Expressions",
+        },
       };
     } catch (error) {
-      console.error('[ALL CAPTURES DEBUG] Error creating grid composite:', error);
+      console.error(
+        "[ALL CAPTURES DEBUG] Error creating grid composite:",
+        error
+      );
       return null;
     }
   };
 
   const generateAllComposites = async () => {
-    console.log('[COMPOSITES] Starting composite generation...');
-    console.log('[COMPOSITES]   - Has videoUrl:', !!videoUrl);
-    console.log('[COMPOSITES]   - Number of captures:', captures.length);
+    console.log("[COMPOSITES] Starting composite generation...");
+    console.log("[COMPOSITES]   - Has videoUrl:", !!videoUrl);
+    console.log("[COMPOSITES]   - Number of captures:", captures.length);
     setLoading(true);
     const graphics = [];
 
     // Add video as first item if available
     if (videoUrl) {
-      console.log('[COMPOSITES] Adding video to carousel as first item');
-      console.log('[COMPOSITES]   - Video URL:', videoUrl.substring(0, 50) + '...');
-      console.log('[COMPOSITES]   - Video exceeds limit:', videoExceedsLimit);
-      console.log('[COMPOSITES]   - Video duration:', videoDuration);
+      console.log("[COMPOSITES] Adding video to carousel as first item");
+      console.log(
+        "[COMPOSITES]   - Video URL:",
+        videoUrl.substring(0, 50) + "..."
+      );
+      console.log("[COMPOSITES]   - Video exceeds limit:", videoExceedsLimit);
+      console.log("[COMPOSITES]   - Video duration:", videoDuration);
       graphics.push({
-        type: 'video',
+        type: "video",
         videoUrl: videoUrl,
         videoBlob: replayVideoBlob,
         exceedsLimit: videoExceedsLimit,
         duration: videoDuration,
       });
-      console.log('[COMPOSITES] Video added. Graphics array length:', graphics.length);
+      console.log(
+        "[COMPOSITES] Video added. Graphics array length:",
+        graphics.length
+      );
     } else {
-      console.log('[COMPOSITES] No video URL available, skipping video');
+      console.log("[COMPOSITES] No video URL available, skipping video");
     }
 
-    console.log('[COMPOSITES] Generating capture graphics...');
+    console.log("[COMPOSITES] Generating capture graphics...");
     for (const capture of captures) {
       const graphic = await generateCompositeGraphic(capture);
       if (graphic) {
         graphics.push(graphic);
       }
     }
-    console.log('[COMPOSITES] Capture graphics generated. Total graphics:', graphics.length);
+    console.log(
+      "[COMPOSITES] Capture graphics generated. Total graphics:",
+      graphics.length
+    );
 
     // Generate the "all captures" grid composite if we have all 8 captures
     if (captures.length === 8) {
-      console.log('[COMPOSITES] Generating all-captures grid...');
+      console.log("[COMPOSITES] Generating all-captures grid...");
       const allCapturesGraphic = await generateAllCapturesComposite(captures);
       if (allCapturesGraphic) {
         graphics.push(allCapturesGraphic);
-        console.log('[COMPOSITES] All-captures grid added. Total graphics:', graphics.length);
+        console.log(
+          "[COMPOSITES] All-captures grid added. Total graphics:",
+          graphics.length
+        );
       }
     } else {
-      console.log('[COMPOSITES] Not enough captures for grid (need 8, have', captures.length + ')');
+      console.log(
+        "[COMPOSITES] Not enough captures for grid (need 8, have",
+        captures.length + ")"
+      );
     }
 
     setCompositeGraphics(graphics);
     setLoading(false);
-    console.log('[COMPOSITES] ✅ Composite generation complete. Total items:', graphics.length);
-    console.log('[COMPOSITES] Graphics breakdown:');
+    console.log(
+      "[COMPOSITES] ✅ Composite generation complete. Total items:",
+      graphics.length
+    );
+    console.log("[COMPOSITES] Graphics breakdown:");
     graphics.forEach((g, i) => {
-      console.log(`[COMPOSITES]   [${i}] Type: ${g.type || 'image'}, ID: ${g.capture?.expressionId || 'n/a'}`);
+      console.log(
+        `[COMPOSITES]   [${i}] Type: ${g.type || "image"}, ID: ${
+          g.capture?.expressionId || "n/a"
+        }`
+      );
     });
   };
 
   const formatTime = (ms) => {
     // Safety check - handle invalid or unreasonably large values
-    if (!ms || ms < 0 || !isFinite(ms) || ms > 86400000) { // > 24 hours is unreasonable
-      console.warn('[END SCREEN DEBUG] Invalid time value:', ms);
-      return '0.00s';
+    if (!ms || ms < 0 || !isFinite(ms) || ms > 86400000) {
+      // > 24 hours is unreasonable
+      console.warn("[END SCREEN DEBUG] Invalid time value:", ms);
+      return "0.00s";
     }
 
     const seconds = Math.floor(ms / 1000);
@@ -460,13 +610,15 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
     const milliseconds = Math.floor((ms % 1000) / 10);
 
     if (minutes > 0) {
-      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+      return `${minutes}:${remainingSeconds
+        .toString()
+        .padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}`;
     }
-    return `${remainingSeconds}.${milliseconds.toString().padStart(2, '0')}s`;
+    return `${remainingSeconds}.${milliseconds.toString().padStart(2, "0")}s`;
   };
 
   const handleDownload = (graphic) => {
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.download = `nailongify-${graphic.capture.expressionId}.png`;
     link.href = graphic.dataUrl;
     link.click();
@@ -474,13 +626,13 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
   const handleDownloadAll = () => {
     // Clear any existing download timeouts
-    downloadTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+    downloadTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
     downloadTimeoutsRef.current = [];
 
     // Create new staggered downloads
     compositeGraphics.forEach((graphic, index) => {
       const timeout = setTimeout(() => {
-        if (graphic.type === 'video') {
+        if (graphic.type === "video") {
           handleDownloadVideo(graphic);
         } else {
           handleDownload(graphic);
@@ -491,7 +643,7 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
   };
 
   const handleDownloadVideo = (videoItem) => {
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.download = `nailongify-replay-${Date.now()}.webm`;
     link.href = videoItem.videoUrl;
     link.click();
@@ -501,7 +653,7 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
   useEffect(() => {
     return () => {
       // Clear any pending download timeouts
-      downloadTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      downloadTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
       downloadTimeoutsRef.current = [];
     };
   }, []);
@@ -509,19 +661,25 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
   // Remove emojis from text
   const removeEmojis = (text) => {
     // Remove emojis using regex - matches most emoji ranges
-    return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E0}-\u{1F1FF}]/gu, '');
+    return text.replace(
+      /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E0}-\u{1F1FF}]/gu,
+      ""
+    );
   };
 
-  const handleSubmitToLeaderboard = async () => {
-    console.log('[SUBMIT] ========== Starting Leaderboard Submission ==========');
-    console.log('[SUBMIT] Nickname:', nickname);
-    console.log('[SUBMIT] Completion time:', completionTime);
-    console.log('[SUBMIT] Has replay video blob:', !!replayVideoBlob);
-    console.log('[SUBMIT] Video exceeds limit:', videoExceedsLimit);
+  const handleSubmitToLeaderboard = async (includeVideo = true) => {
+    console.log(
+      "[SUBMIT] ========== Starting Leaderboard Submission =========="
+    );
+    console.log("[SUBMIT] Nickname:", nickname);
+    console.log("[SUBMIT] Completion time:", completionTime);
+    console.log("[SUBMIT] Include video:", includeVideo);
+    console.log("[SUBMIT] Has replay video blob:", !!replayVideoBlob);
+    console.log("[SUBMIT] Video exceeds limit:", videoExceedsLimit);
 
     if (!nickname.trim()) {
-      console.error('[SUBMIT] No nickname provided');
-      setSubmitError('Please enter a nickname');
+      console.error("[SUBMIT] No nickname provided");
+      setSubmitError("Please enter a nickname");
       return;
     }
 
@@ -531,17 +689,20 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
     try {
       // Find the "all captures" grid composite
       const allCapturesGraphic = compositeGraphics.find(
-        g => g.capture?.expressionId === 'all-captures'
+        (g) => g.capture?.expressionId === "all-captures"
       );
-      console.log('[SUBMIT] Found all-captures graphic:', !!allCapturesGraphic);
+      console.log("[SUBMIT] Found all-captures graphic:", !!allCapturesGraphic);
 
       let captureImageUrl = null;
       let videoUrlToUpload = null;
 
       // Upload the grid composite if it exists
       if (allCapturesGraphic) {
-        console.log('[SUBMIT] Uploading capture grid image...');
-        console.log('[SUBMIT]   - Data URL length:', allCapturesGraphic.dataUrl.length);
+        console.log("[SUBMIT] Uploading capture grid image...");
+        console.log(
+          "[SUBMIT]   - Data URL length:",
+          allCapturesGraphic.dataUrl.length
+        );
         const uploadResult = await uploadCaptureImage(
           allCapturesGraphic.dataUrl,
           nickname.trim()
@@ -549,22 +710,38 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
         if (uploadResult.success) {
           captureImageUrl = uploadResult.url;
-          console.log('[SUBMIT] ✅ Image uploaded successfully:', captureImageUrl);
+          console.log(
+            "[SUBMIT] ✅ Image uploaded successfully:",
+            captureImageUrl
+          );
         } else {
-          console.warn('[SUBMIT] ❌ Failed to upload image:', uploadResult.error);
+          console.warn(
+            "[SUBMIT] ❌ Failed to upload image:",
+            uploadResult.error
+          );
           // Continue with submission even if image upload fails
         }
       } else {
-        console.warn('[SUBMIT] No all-captures graphic found, skipping image upload');
+        console.warn(
+          "[SUBMIT] No all-captures graphic found, skipping image upload"
+        );
       }
 
-      // Upload replay video if it exists and doesn't exceed duration limit
-      if (replayVideoBlob && !videoExceedsLimit) {
-        console.log('[SUBMIT] Uploading replay video...');
-        console.log('[SUBMIT]   - Video blob size:', replayVideoBlob.size, 'bytes');
-        console.log('[SUBMIT]   - Video blob type:', replayVideoBlob.type);
-        console.log('[SUBMIT]   - Video duration:', videoDuration, 'seconds');
-        console.log('[SUBMIT]   - Max allowed:', MAX_VIDEO_DURATION_SECONDS, 'seconds');
+      // Upload replay video if requested and available
+      if (includeVideo && replayVideoBlob && !videoExceedsLimit) {
+        console.log("[SUBMIT] Uploading replay video...");
+        console.log(
+          "[SUBMIT]   - Video blob size:",
+          replayVideoBlob.size,
+          "bytes"
+        );
+        console.log("[SUBMIT]   - Video blob type:", replayVideoBlob.type);
+        console.log("[SUBMIT]   - Video duration:", videoDuration, "seconds");
+        console.log(
+          "[SUBMIT]   - Max allowed:",
+          MAX_VIDEO_DURATION_SECONDS,
+          "seconds"
+        );
 
         const videoUploadResult = await uploadReplayVideo(
           replayVideoBlob,
@@ -573,24 +750,36 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
 
         if (videoUploadResult.success) {
           videoUrlToUpload = videoUploadResult.url;
-          console.log('[SUBMIT] ✅ Video uploaded successfully:', videoUrlToUpload);
+          console.log(
+            "[SUBMIT] ✅ Video uploaded successfully:",
+            videoUrlToUpload
+          );
         } else {
-          console.warn('[SUBMIT] ❌ Failed to upload video:', videoUploadResult.error);
+          console.warn(
+            "[SUBMIT] ❌ Failed to upload video:",
+            videoUploadResult.error
+          );
           // Continue with submission even if video upload fails
         }
+      } else if (!includeVideo) {
+        console.log(
+          "[SUBMIT] ⏭️ Skipping video upload - user chose not to include video"
+        );
       } else if (videoExceedsLimit) {
-        console.log(`[SUBMIT] ⏭️ Skipping video upload - exceeds ${MAX_VIDEO_DURATION_SECONDS} second limit`);
+        console.log(
+          `[SUBMIT] ⏭️ Skipping video upload - exceeds ${MAX_VIDEO_DURATION_SECONDS} second limit`
+        );
         console.log(`[SUBMIT]   - Actual duration: ${videoDuration} seconds`);
       } else if (!replayVideoBlob) {
-        console.log('[SUBMIT] ⏭️ Skipping video upload - no video blob');
+        console.log("[SUBMIT] ⏭️ Skipping video upload - no video blob");
       }
 
       // Submit to leaderboard with the image URL and video URL
-      console.log('[SUBMIT] Submitting to leaderboard with:');
-      console.log('[SUBMIT]   - Nickname:', nickname.trim());
-      console.log('[SUBMIT]   - Time:', completionTime);
-      console.log('[SUBMIT]   - Capture URL:', captureImageUrl || 'none');
-      console.log('[SUBMIT]   - Video URL:', videoUrlToUpload || 'none');
+      console.log("[SUBMIT] Submitting to leaderboard with:");
+      console.log("[SUBMIT]   - Nickname:", nickname.trim());
+      console.log("[SUBMIT]   - Time:", completionTime);
+      console.log("[SUBMIT]   - Capture URL:", captureImageUrl || "none");
+      console.log("[SUBMIT]   - Video URL:", videoUrlToUpload || "none");
 
       const result = await submitLeaderboardEntry(
         nickname.trim(),
@@ -600,34 +789,27 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
       );
 
       if (result.success) {
-        console.log('[SUBMIT] ✅ Leaderboard entry submitted successfully');
-        console.log('[SUBMIT] Entry data:', result.data);
+        console.log("[SUBMIT] ✅ Leaderboard entry submitted successfully");
+        console.log("[SUBMIT] Entry data:", result.data);
         setSubmitted(true);
 
-        // Get player's rank
-        const rankResult = await getPlayerRank(completionTime);
-        if (rankResult.success) {
-          console.log('[SUBMIT] Player rank:', rankResult.rank);
-          setPlayerRank(rankResult.rank);
-        }
-
-        // Navigate to leaderboard after successful submission
-        console.log('[SUBMIT] Navigating to leaderboard in 1.5s...');
-        setTimeout(() => {
-          onViewLeaderboard();
-        }, 1500); // Show success message for 1.5s before navigating
+        // Use projected rank if we haven't submitted yet
+        setPlayerRank(projectedRank);
       } else {
-        console.error('[SUBMIT] ❌ Failed to submit to leaderboard:', result.error);
-        setSubmitError(result.error || 'Failed to submit to leaderboard');
+        console.error(
+          "[SUBMIT] ❌ Failed to submit to leaderboard:",
+          result.error
+        );
+        setSubmitError(result.error || "Failed to submit to leaderboard");
       }
     } catch (err) {
-      console.error('[SUBMIT] ❌ Unexpected error:', err);
-      console.error('[SUBMIT] Error stack:', err.stack);
-      setSubmitError('An unexpected error occurred');
+      console.error("[SUBMIT] ❌ Unexpected error:", err);
+      console.error("[SUBMIT] Error stack:", err.stack);
+      setSubmitError("An unexpected error occurred");
     }
 
     setSubmitting(false);
-    console.log('[SUBMIT] ========== Submission Complete ==========');
+    console.log("[SUBMIT] ========== Submission Complete ==========");
   };
 
   // Carousel navigation functions
@@ -674,7 +856,7 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
                 )}
 
                 <div className="carousel-image-container carousel-card">
-                  {compositeGraphics[currentIndex].type === 'video' ? (
+                  {compositeGraphics[currentIndex].type === "video" ? (
                     <>
                       <video
                         src={compositeGraphics[currentIndex].videoUrl}
@@ -683,74 +865,130 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
                         loop
                         muted
                         playsInline
-                        style={{ width: '100%', maxHeight: '500px', objectFit: 'contain' }}
+                        style={{
+                          width: "100%",
+                          maxHeight: "500px",
+                          objectFit: "contain",
+                        }}
                         onLoadedMetadata={(e) => {
-                          console.log('[VIDEO PLAYBACK] Video metadata loaded');
-                          console.log('[VIDEO PLAYBACK]   - Duration:', e.target.duration, 'seconds');
-                          console.log('[VIDEO PLAYBACK]   - Current playbackRate:', e.target.playbackRate);
+                          console.log("[VIDEO PLAYBACK] Video metadata loaded");
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Duration:",
+                            e.target.duration,
+                            "seconds"
+                          );
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Current playbackRate:",
+                            e.target.playbackRate
+                          );
 
                           // Set playback rate
                           e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
-                          console.log('[VIDEO PLAYBACK]   - Set playbackRate to:', VIDEO_PLAYBACK_SPEED);
-                          console.log('[VIDEO PLAYBACK]   - New playbackRate:', e.target.playbackRate);
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Set playbackRate to:",
+                            VIDEO_PLAYBACK_SPEED
+                          );
+                          console.log(
+                            "[VIDEO PLAYBACK]   - New playbackRate:",
+                            e.target.playbackRate
+                          );
                         }}
                         onLoadedData={(e) => {
                           // This event fires when enough data is loaded to start playing
-                          console.log('[VIDEO PLAYBACK] Video data loaded');
-                          console.log('[VIDEO PLAYBACK]   - Duration:', e.target.duration, 'seconds');
-                          console.log('[VIDEO PLAYBACK]   - Current playbackRate:', e.target.playbackRate);
+                          console.log("[VIDEO PLAYBACK] Video data loaded");
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Duration:",
+                            e.target.duration,
+                            "seconds"
+                          );
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Current playbackRate:",
+                            e.target.playbackRate
+                          );
 
                           // Force set playback rate again (in case it wasn't set before)
                           if (e.target.playbackRate !== VIDEO_PLAYBACK_SPEED) {
-                            console.log('[VIDEO PLAYBACK]   - Correcting playbackRate to:', VIDEO_PLAYBACK_SPEED);
+                            console.log(
+                              "[VIDEO PLAYBACK]   - Correcting playbackRate to:",
+                              VIDEO_PLAYBACK_SPEED
+                            );
                             e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
                           }
                         }}
                         onCanPlay={(e) => {
                           // This event fires when the video can be played
-                          console.log('[VIDEO PLAYBACK] Video can play');
-                          console.log('[VIDEO PLAYBACK]   - Duration:', e.target.duration, 'seconds');
-                          console.log('[VIDEO PLAYBACK]   - Current playbackRate:', e.target.playbackRate);
+                          console.log("[VIDEO PLAYBACK] Video can play");
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Duration:",
+                            e.target.duration,
+                            "seconds"
+                          );
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Current playbackRate:",
+                            e.target.playbackRate
+                          );
 
                           // Ensure playback rate is set
                           if (e.target.playbackRate !== VIDEO_PLAYBACK_SPEED) {
-                            console.log('[VIDEO PLAYBACK]   - Setting playbackRate to:', VIDEO_PLAYBACK_SPEED);
+                            console.log(
+                              "[VIDEO PLAYBACK]   - Setting playbackRate to:",
+                              VIDEO_PLAYBACK_SPEED
+                            );
                             e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
                           }
                         }}
                         onPlay={(e) => {
-                          console.log('[VIDEO PLAYBACK] Video started playing');
-                          console.log('[VIDEO PLAYBACK]   - Duration:', e.target.duration, 'seconds');
-                          console.log('[VIDEO PLAYBACK]   - playbackRate:', e.target.playbackRate);
+                          console.log("[VIDEO PLAYBACK] Video started playing");
+                          console.log(
+                            "[VIDEO PLAYBACK]   - Duration:",
+                            e.target.duration,
+                            "seconds"
+                          );
+                          console.log(
+                            "[VIDEO PLAYBACK]   - playbackRate:",
+                            e.target.playbackRate
+                          );
 
                           // Final check - force playback rate when playing starts
                           if (e.target.playbackRate !== VIDEO_PLAYBACK_SPEED) {
-                            console.log('[VIDEO PLAYBACK]   - FORCING playbackRate to:', VIDEO_PLAYBACK_SPEED);
+                            console.log(
+                              "[VIDEO PLAYBACK]   - FORCING playbackRate to:",
+                              VIDEO_PLAYBACK_SPEED
+                            );
                             e.target.playbackRate = VIDEO_PLAYBACK_SPEED;
                           }
                         }}
                         onRateChange={(e) => {
-                          console.log('[VIDEO PLAYBACK] Playback rate changed to:', e.target.playbackRate);
+                          console.log(
+                            "[VIDEO PLAYBACK] Playback rate changed to:",
+                            e.target.playbackRate
+                          );
                         }}
                       />
                       {compositeGraphics[currentIndex].exceedsLimit && (
-                        <div style={{
-                          background: '#ff6b9d',
-                          color: 'white',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          marginTop: '0.5rem',
-                          fontSize: '0.9rem',
-                          textAlign: 'center'
-                        }}>
-                          Your run took longer than {MAX_VIDEO_DURATION_SECONDS} seconds, so the video cannot be uploaded to the leaderboard.
+                        <div
+                          style={{
+                            background: "#ff6b9d",
+                            color: "white",
+                            padding: "0.75rem",
+                            borderRadius: "8px",
+                            marginTop: "0.5rem",
+                            fontSize: "0.9rem",
+                            textAlign: "center",
+                          }}
+                        >
+                          Your run took longer than {MAX_VIDEO_DURATION_SECONDS}{" "}
+                          seconds, so the video cannot be uploaded to the
+                          leaderboard.
                           <br />
                           You can still download it below!
                         </div>
                       )}
                       <button
                         className="btn-download-graphic"
-                        onClick={() => handleDownloadVideo(compositeGraphics[currentIndex])}
+                        onClick={() =>
+                          handleDownloadVideo(compositeGraphics[currentIndex])
+                        }
                         title="Download replay video (plays at original speed in video players)"
                       >
                         Download Replay (Original Speed)
@@ -760,12 +998,16 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
                     <>
                       <img
                         src={compositeGraphics[currentIndex].dataUrl}
-                        alt={compositeGraphics[currentIndex].capture.expressionName}
+                        alt={
+                          compositeGraphics[currentIndex].capture.expressionName
+                        }
                         className="carousel-image"
                       />
                       <button
                         className="btn-download-graphic"
-                        onClick={() => handleDownload(compositeGraphics[currentIndex])}
+                        onClick={() =>
+                          handleDownload(compositeGraphics[currentIndex])
+                        }
                         title="Download this graphic"
                       >
                         Download
@@ -790,7 +1032,9 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
                   {compositeGraphics.map((_, index) => (
                     <button
                       key={index}
-                      className={`carousel-dot ${index === currentIndex ? 'active' : ''}`}
+                      className={`carousel-dot ${
+                        index === currentIndex ? "active" : ""
+                      }`}
                       onClick={() => goToSlide(index)}
                       aria-label={`Go to slide ${index + 1}`}
                     />
@@ -802,24 +1046,150 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
             {/* Leaderboard submission form */}
             {!submitted ? (
               <div className="leaderboard-submit">
-                <h3>Submit to Global Leaderboard - Time: <span className="time-display">{formatTime(completionTime)}</span></h3>
+                <h3>
+                  Submit to Global Leaderboard - Time:{" "}
+                  <span className="time-display">
+                    {formatTime(completionTime)}
+                  </span>
+                </h3>
+
+                {/* Projected Rank Display */}
+                {loadingRank ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "1rem",
+                      color: "#667eea",
+                    }}
+                  >
+                    <p>Calculating your rank...</p>
+                  </div>
+                ) : (
+                  projectedRank !== null && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "1rem",
+                        marginBottom: "1rem",
+                        background:
+                          projectedRank <= 5
+                            ? "linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)"
+                            : "#f0f0f0",
+                        borderRadius: "12px",
+                        border:
+                          projectedRank <= 5 ? "2px solid #ffc107" : "none",
+                      }}
+                    >
+                      {projectedRank <= 5 ? (
+                        <>
+                          <p
+                            style={{
+                              fontSize: "1.5rem",
+                              fontWeight: "700",
+                              color: "#d4a500",
+                              margin: "0 0 0.5rem 0",
+                              textTransform: "uppercase",
+                              letterSpacing: "1px",
+                            }}
+                          >
+                            🏆 CONGRATULATIONS! YOU'RE IN THE TOP 5! 🏆
+                          </p>
+                          <p
+                            style={{
+                              fontSize: "0.95rem",
+                              color: "#666",
+                              margin: "0.5rem 0 0 0",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            Submissions in the top 5 must be accompanied by a
+                            video.
+                            <br />
+                            We're here to witness true greatness.
+                          </p>
+                        </>
+                      ) : (
+                        <p
+                          style={{
+                            fontSize: "1.2rem",
+                            fontWeight: "600",
+                            color: "#667eea",
+                            margin: 0,
+                          }}
+                        >
+                          Your Rank:{" "}
+                          <strong style={{ fontSize: "1.4rem" }}>
+                            #{projectedRank}
+                          </strong>
+                        </p>
+                      )}
+                    </div>
+                  )
+                )}
+
                 <div className="submit-form">
                   <input
                     type="text"
                     placeholder="Enter nickname (max 20 chars)"
                     value={nickname}
-                    onChange={(e) => setNickname(removeEmojis(e.target.value).slice(0, 20))}
+                    onChange={(e) =>
+                      setNickname(removeEmojis(e.target.value).slice(0, 20))
+                    }
                     maxLength={20}
                     disabled={submitting}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSubmitToLeaderboard()}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" &&
+                      projectedRank <= 5 &&
+                      handleSubmitToLeaderboard(true)
+                    }
                   />
-                  <button
-                    onClick={handleSubmitToLeaderboard}
-                    disabled={submitting || !nickname.trim()}
-                    className="btn-submit-leaderboard"
-                  >
-                    {submitting ? 'Submitting...' : 'Submit Score'}
-                  </button>
+
+                  {/* Conditional buttons based on rank */}
+                  {projectedRank <= 5 ? (
+                    // Top 5: Only allow with video
+                    <button
+                      onClick={() => handleSubmitToLeaderboard(true)}
+                      disabled={
+                        submitting ||
+                        !nickname.trim() ||
+                        !replayVideoBlob ||
+                        videoExceedsLimit
+                      }
+                      className="btn-submit-leaderboard"
+                      title={
+                        !replayVideoBlob
+                          ? "Video required for top 5"
+                          : videoExceedsLimit
+                          ? "Video exceeds time limit"
+                          : ""
+                      }
+                    >
+                      {submitting ? "Submitting..." : "Submit with Video"}
+                    </button>
+                  ) : (
+                    // Not top 5: Show both options
+                    <>
+                      {replayVideoBlob && !videoExceedsLimit && (
+                        <button
+                          onClick={() => handleSubmitToLeaderboard(true)}
+                          disabled={submitting || !nickname.trim()}
+                          className="btn-submit-leaderboard"
+                          style={{ marginBottom: "0.5rem" }}
+                        >
+                          {submitting ? "Submitting..." : "Submit with Video"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleSubmitToLeaderboard(false)}
+                        disabled={submitting || !nickname.trim()}
+                        className="btn-submit-leaderboard"
+                        style={{ background: "#6c757d" }}
+                      >
+                        {submitting ? "Submitting..." : "Submit without Video"}
+                      </button>
+                    </>
+                  )}
+
                   <button className="btn-secondary" onClick={onRestart}>
                     Try Again
                   </button>
@@ -829,16 +1199,43 @@ function EndScreen({ captures, completionTime, replayVideoBlob, onRestart, onVie
             ) : (
               <div className="leaderboard-success">
                 <p className="success-message">Score submitted successfully!</p>
-                {playerRank && <p className="rank-display">Your Rank: <strong>#{playerRank}</strong></p>}
-                <button className="btn-secondary" onClick={onRestart}>
-                  Try Again
-                </button>
+                {playerRank && totalEntries && totalEntries > 0 && (
+                  <p className="rank-display">
+                    your entry beats{" "}
+                    <strong>
+                      {Math.max(
+                        0,
+                        (
+                          ((totalEntries - playerRank) / totalEntries) *
+                          100
+                        ).toFixed(1)
+                      )}
+                      %
+                    </strong>{" "}
+                    of entries
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+                  <button className="btn-secondary" onClick={onRestart}>
+                    Play Again
+                  </button>
+                  <button className="btn-primary" onClick={onViewLeaderboard}>
+                    View Leaderboard
+                  </button>
+                </div>
               </div>
             )}
           </>
         ) : (
           <div className="no-captures-message">
-            <p style={{ color: '#666', fontSize: '1.2rem', textAlign: 'center', padding: '2rem' }}>
+            <p
+              style={{
+                color: "#666",
+                fontSize: "1.2rem",
+                textAlign: "center",
+                padding: "2rem",
+              }}
+            >
               No captures were collected. Captures: {captures?.length || 0}
             </p>
           </div>
